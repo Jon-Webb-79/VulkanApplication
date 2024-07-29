@@ -115,9 +115,12 @@ void VulkanInstance::createSurface() {
 // ================================================================================
 
 
-VulkanApplication::VulkanApplication(std::unique_ptr<Window> window, const std::vector<Vertex>& vertices)
+VulkanApplication::VulkanApplication(std::unique_ptr<Window> window, 
+                                     const std::vector<Vertex>& vertices,
+                                     const std::vector<uint16_t>& indices)
     : windowInstance(std::move(window)),
-      vertices(vertices) {
+      vertices(vertices),
+      indices(indices){
     // Instantiate related classes
     validationLayers = std::make_unique<ValidationLayers>(*this->windowInstance);
     vulkanInstanceCreator = std::make_unique<VulkanInstance>(*this->windowInstance, 
@@ -137,12 +140,14 @@ VulkanApplication::VulkanApplication(std::unique_ptr<Window> window, const std::
                                                           swapChain->getSwapChainImageFormat(),
                                                           vulkanPhysicalDevice->getPhysicalDevice(),
                                                           vulkanLogicalDevice->getGraphicsQueue(),
-                                                          vertices);
+                                                          vertices,
+                                                          this->indices);
     graphicsPipeline->createFramebuffers(swapChain->getSwapChainImageViews(), 
                                      swapChain->getSwapChainExtent()); 
     graphicsPipeline->createCommandPool(vulkanPhysicalDevice->getPhysicalDevice(), 
                                     vulkanInstanceCreator->getSurface());
     graphicsPipeline->createVertexBuffer();
+    graphicsPipeline->createIndexBuffer();
     graphicsPipeline->createCommandBuffers();
     graphicsPipeline->createSyncObjects();
     graphicsQueue = this->vulkanLogicalDevice->getGraphicsQueue();
@@ -234,86 +239,6 @@ void VulkanApplication::drawFrame() {
     }
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
-
-// void VulkanApplication::drawFrame() {
-//     VkDevice device = vulkanLogicalDevice->getDevice();
-//     uint32_t frameIndex = currentFrame;
-//
-//     std::cout << "Graphics Queue Handle: " << graphicsQueue << std::endl;
-//     if (graphicsQueue == VK_NULL_HANDLE) {
-//         throw std::runtime_error("Graphics queue handle is null.");
-//     }
-//
-//     // Wait for the frame to be finished
-//     graphicsPipeline->waitForFences(frameIndex);
-//     graphicsPipeline->resetFences(frameIndex);
-//
-//     uint32_t imageIndex;
-//     if (vkAcquireNextImageKHR(device, swapChain->getSwapChain(), UINT64_MAX, 
-//                               graphicsPipeline->getImageAvailableSemaphore(frameIndex), 
-//                               VK_NULL_HANDLE, &imageIndex) != VK_SUCCESS) {
-//         throw std::runtime_error("failed to acquire swap chain image!");
-//     }
-//
-//     VkCommandBuffer cmdBuffer = graphicsPipeline->getCommandBuffer(frameIndex);
-//     vkResetCommandBuffer(cmdBuffer, 0);
-//     graphicsPipeline->recordCommandBuffer(frameIndex, imageIndex);
-//
-//     if (cmdBuffer == VK_NULL_HANDLE) {
-//         throw std::runtime_error("Command buffer is null.");
-//     }
-//
-//     VkSemaphore imageAvailableSemaphore = graphicsPipeline->getImageAvailableSemaphore(frameIndex);
-//     VkSemaphore renderFinishedSemaphore = graphicsPipeline->getRenderFinishedSemaphore(frameIndex);
-//
-//     if (imageAvailableSemaphore == VK_NULL_HANDLE || renderFinishedSemaphore == VK_NULL_HANDLE) {
-//         throw std::runtime_error("One or more semaphores are null.");
-//     }
-//
-//     VkSubmitInfo submitInfo{};
-//     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-//
-//     VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
-//     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-//     submitInfo.waitSemaphoreCount = 1;
-//     submitInfo.pWaitSemaphores = waitSemaphores;
-//     submitInfo.pWaitDstStageMask = waitStages;
-//
-//     submitInfo.commandBufferCount = 1;
-//     submitInfo.pCommandBuffers = &cmdBuffer;
-//
-//     VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
-//     submitInfo.signalSemaphoreCount = 1;
-//     submitInfo.pSignalSemaphores = signalSemaphores;
-//
-//     // Debug: Check submit info structure
-//     std::cout << "Submit Info: "
-//               << "waitSemaphoreCount: " << submitInfo.waitSemaphoreCount
-//               << ", commandBufferCount: " << submitInfo.commandBufferCount
-//               << ", signalSemaphoreCount: " << submitInfo.signalSemaphoreCount
-//               << std::endl;
-//
-//     if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, graphicsPipeline->getInFlightFence(frameIndex)) != VK_SUCCESS) {
-//         throw std::runtime_error("failed to submit draw command buffer!");
-//     }
-//
-//     VkPresentInfoKHR presentInfo{};
-//     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-//     presentInfo.waitSemaphoreCount = 1;
-//     presentInfo.pWaitSemaphores = signalSemaphores;
-//
-//     VkSwapchainKHR swapChains[] = {swapChain->getSwapChain()};
-//     presentInfo.swapchainCount = 1;
-//     presentInfo.pSwapchains = swapChains;
-//     presentInfo.pImageIndices = &imageIndex;
-//
-//     if (vkQueuePresentKHR(presentQueue, &presentInfo) != VK_SUCCESS) {
-//         throw std::runtime_error("failed to present swap chain image!");
-//     }
-//
-//     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-// }
-
 // ================================================================================
 // ================================================================================
 // eof

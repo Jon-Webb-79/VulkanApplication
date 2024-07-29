@@ -80,7 +80,8 @@ public:
                      VkFormat swapChainImageFormat,
                      VkPhysicalDevice physicalDevice,
                      VkQueue graphicsQue,
-                     const std::vector<Vertex>& vertices);
+                     const std::vector<Vertex>& vertices,
+                     const std::vector<uint16_t>& indices);
 // --------------------------------------------------------------------------------
 
     /**
@@ -229,6 +230,9 @@ public:
     * @throws std::runtime_error if the buffer or memory allocation fails.
     */
     void createVertexBuffer();
+// --------------------------------------------------------------------------------
+
+    void createIndexBuffer();
 // ================================================================================ 
 private:
     VkDevice device;
@@ -244,9 +248,12 @@ private:
     std::vector<VkFence> inFlightFences;
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
     VkPhysicalDevice physicalDevice;  // Physical device
     VkQueue graphicsQueue;
     std::vector<Vertex> vertices;  // Vertex data
+    std::vector<uint16_t> indices;
 // --------------------------------------------------------------------------------
 
     /**
@@ -306,6 +313,9 @@ private:
     * This method destroys the vertex buffer and frees the allocated memory.
     */
     void cleanupVertexBuffer();
+// --------------------------------------------------------------------------------
+
+    void cleanupIndexBuffer();
 // --------------------------------------------------------------------------------
 
     /**

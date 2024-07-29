@@ -86,7 +86,9 @@ public:
      * @param window A reference to a Window object that the application will use.
      * @param vertices A vector of Vertex objects
      */
-    VulkanApplication(std::unique_ptr<Window> window, const std::vector<Vertex>& vertices);
+    VulkanApplication(std::unique_ptr<Window> window, 
+                      const std::vector<Vertex>& vertices,
+                      const std::vector<uint16_t>& indices);
 // --------------------------------------------------------------------------------
 
     /**
@@ -114,6 +116,7 @@ private:
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
 
     std::vector<Vertex> vertices;
+    std::vector<uint16_t> indices;
     VkQueue graphicsQueue; // = VK_NULL_HANDLE;
     VkQueue presentQueue; // = VK_NULL_HANDLE;
 
