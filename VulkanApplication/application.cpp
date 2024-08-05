@@ -11,7 +11,6 @@
 // ================================================================================
 // ================================================================================
 // Include modules here
-
 #include "include/application.hpp"
 #include "include/constants.hpp"
 
@@ -131,6 +130,11 @@ VulkanApplication::VulkanApplication(std::unique_ptr<Window> window,
                                                                 validationLayers->getValidationLayers(),
                                                                 vulkanInstanceCreator->getSurface(),
                                                                 deviceExtensions);
+    allocatorManager = std::make_unique<AllocatorManager>(
+        vulkanPhysicalDevice->getPhysicalDevice(),
+        vulkanLogicalDevice->getDevice(),
+        *vulkanInstanceCreator->getInstance());
+
     swapChain = std::make_unique<SwapChain>(vulkanLogicalDevice->getDevice(),
                                             vulkanInstanceCreator->getSurface(),
                                             vulkanPhysicalDevice->getPhysicalDevice(),
@@ -141,11 +145,13 @@ VulkanApplication::VulkanApplication(std::unique_ptr<Window> window,
                                                           vulkanPhysicalDevice->getPhysicalDevice(),
                                                           vulkanLogicalDevice->getGraphicsQueue(),
                                                           vertices,
-                                                          this->indices);
+                                                          this->indices,
+                                                          *this->vulkanInstanceCreator->getInstance(),
+                                                          *allocatorManager);
     graphicsPipeline->createFramebuffers(swapChain->getSwapChainImageViews(), 
-                                     swapChain->getSwapChainExtent()); 
+                                         swapChain->getSwapChainExtent()); 
     graphicsPipeline->createCommandPool(vulkanPhysicalDevice->getPhysicalDevice(), 
-                                    vulkanInstanceCreator->getSurface());
+                                        vulkanInstanceCreator->getSurface());
     graphicsPipeline->createVertexBuffer();
     graphicsPipeline->createIndexBuffer();
     graphicsPipeline->createCommandBuffers();
@@ -172,6 +178,7 @@ void VulkanApplication::run() {
 void VulkanApplication::destroyResources() {
 
     graphicsPipeline.reset();
+    allocatorManager.reset();
     swapChain.reset();
 
     // Destroy Vulkan logical device first

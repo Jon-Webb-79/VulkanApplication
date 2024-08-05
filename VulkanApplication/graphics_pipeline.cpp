@@ -14,6 +14,7 @@
 
 #include "include/graphics_pipeline.hpp"
 #include "include/queues.hpp"
+
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
@@ -24,19 +25,26 @@
 // ================================================================================
 // ================================================================================
 
+
 GraphicsPipeline::GraphicsPipeline(VkDevice device, 
                                    VkExtent2D swapChainExtent, 
                                    VkFormat swapChainImageFormat,
                                    VkPhysicalDevice physicalDevice,
                                    VkQueue graphicsQueue,
                                    const std::vector<Vertex>& vertices,
-                                   const std::vector<uint16_t>& indices)
+                                   const std::vector<uint16_t>& indices,
+                                   VkInstance& instance,
+                                   AllocatorManager& allocatorManager)
     : device(device), 
       swapChainExtent(swapChainExtent), 
       physicalDevice(physicalDevice),
       graphicsQueue(graphicsQueue),
       vertices(vertices),
-      indices(indices){
+      indices(indices),
+      instance(instance),
+      allocatorManager(allocatorManager){
+
+    // Instantiate allocator with a large block of memory
     createRenderPass(swapChainImageFormat);
     createGraphicsPipeline();
 }
@@ -63,8 +71,10 @@ GraphicsPipeline::~GraphicsPipeline() {
     if (commandPool != VK_NULL_HANDLE) {
         vkDestroyCommandPool(device, commandPool, nullptr);
     }
-    cleanupIndexBuffer();
-    cleanupVertexBuffer();
+
+    // Properly destroy buffers using AllocatorManager
+    allocatorManager.destroyBuffer(vertexBuffer, vertexBufferAllocation);
+    allocatorManager.destroyBuffer(indexBuffer, indexBufferAllocation);
 }
 // --------------------------------------------------------------------------------
 
@@ -429,55 +439,52 @@ void GraphicsPipeline::createGraphicsPipeline() {
 void GraphicsPipeline::createVertexBuffer() {
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
+    // Create staging buffer
     VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-
-    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
+    VmaAllocation stagingBufferAllocation;
+    allocatorManager.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+                                  VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingBufferAllocation);
+    // Map and copy data
     void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, vertices.data(), (size_t)bufferSize);
-    vkUnmapMemory(device, stagingBufferMemory);
+    allocatorManager.mapMemory(stagingBufferAllocation, &data);
+    memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+    allocatorManager.unmapMemory(stagingBufferAllocation);
 
-    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+    // Create vertex buffer
+    allocatorManager.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+                                  VMA_MEMORY_USAGE_GPU_ONLY, vertexBuffer, vertexBufferAllocation);
 
-    copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-    // It appears to fail at the above line
-    vkDestroyBuffer(device, stagingBuffer, nullptr);
-    vkFreeMemory(device, stagingBufferMemory, nullptr);
+    // Copy data to vertex buffer
+    allocatorManager.copyBuffer(stagingBuffer, vertexBuffer, bufferSize, graphicsQueue, commandPool);
+    // Clean up staging buffer
+    allocatorManager.destroyBuffer(stagingBuffer, stagingBufferAllocation);
 }
 // --------------------------------------------------------------------------------
 
 void GraphicsPipeline::createIndexBuffer() {
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
+    // Create staging buffer
     VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+    VmaAllocation stagingBufferAllocation;
+    allocatorManager.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+                                  VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingBufferAllocation);
 
+    // Map and copy data
     void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, indices.data(), (size_t) bufferSize);
-    vkUnmapMemory(device, stagingBufferMemory);
+    allocatorManager.mapMemory(stagingBufferAllocation, &data);
+    memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
+    allocatorManager.unmapMemory(stagingBufferAllocation);
 
-    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+    // Create index buffer
+    allocatorManager.createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 
+                                  VMA_MEMORY_USAGE_GPU_ONLY, indexBuffer, indexBufferAllocation);
 
-    copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+    // Copy data to index buffer
+    allocatorManager.copyBuffer(stagingBuffer, indexBuffer, bufferSize, graphicsQueue, commandPool);
 
-    vkDestroyBuffer(device, stagingBuffer, nullptr);
-    vkFreeMemory(device, stagingBufferMemory, nullptr);
-}
-// --------------------------------------------------------------------------------
-
-void GraphicsPipeline::cleanupVertexBuffer() {
-    vkDestroyBuffer(device, vertexBuffer, nullptr);
-    vkFreeMemory(device, vertexBufferMemory, nullptr);
-}
-// --------------------------------------------------------------------------------
-
-void GraphicsPipeline::cleanupIndexBuffer() {
-    vkDestroyBuffer(device, indexBuffer, nullptr);
-    vkFreeMemory(device, indexBufferMemory, nullptr); 
+    // Clean up staging buffer
+    allocatorManager.destroyBuffer(stagingBuffer, stagingBufferAllocation);
 }
 // --------------------------------------------------------------------------------
 
@@ -492,71 +499,6 @@ uint32_t GraphicsPipeline::findMemoryType(uint32_t typeFilter, VkMemoryPropertyF
     }
 
     throw std::runtime_error("failed to find suitable memory type!");
-}
-// --------------------------------------------------------------------------------
-
-void GraphicsPipeline::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, 
-                                    VkMemoryPropertyFlags properties, VkBuffer& buffer, 
-                                    VkDeviceMemory& bufferMemory) {
-    VkBufferCreateInfo bufferInfo{};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = size;
-    bufferInfo.usage = usage;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create buffer!");
-    }
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
-    VkMemoryAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-    if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate buffer memory!");
-    }
-    vkBindBufferMemory(device, buffer, bufferMemory, 0);
-}
-// --------------------------------------------------------------------------------
-
-void GraphicsPipeline::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool = commandPool;
-    allocInfo.commandBufferCount = 1;
-    VkCommandBuffer commandBuffer;
-
-    if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate command buffer!");
-    }
-
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-        throw std::runtime_error("failed to begin recording command buffer!");
-    }
-
-    VkBufferCopy copyRegion{};
-    copyRegion.size = size;
-    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-        throw std::runtime_error("failed to record command buffer!");
-    }
-
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
-
-    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
-        throw std::runtime_error("failed to submit copy command buffer!");
-    }
-    vkQueueWaitIdle(graphicsQueue);
-    vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 // ================================================================================
 // ================================================================================

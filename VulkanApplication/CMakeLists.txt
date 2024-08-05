@@ -4,6 +4,9 @@ project(VulkanApplication)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Set vcpkg toolchain
+set(CMAKE_TOOLCHAIN_FILE "/home/jonwebb/Code_Dev/C++/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
+
 # Include ExternalProject module to manage external dependencies
 include(ExternalProject)
 
@@ -24,19 +27,7 @@ ExternalProject_Add(
 
 # Find the Vulkan package
 find_package(Vulkan REQUIRED)
-
-# Find the glslangValidator tool
-find_program(GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/bin" REQUIRED)
-
-# Check glslangValidator version
-execute_process(
-    COMMAND ${GLSLANG_VALIDATOR} --version
-    OUTPUT_VARIABLE GLSLANG_VALIDATOR_VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-message(STATUS "Found glslangValidator: ${GLSLANG_VALIDATOR}")
-message(STATUS "glslangValidator version: ${GLSLANG_VALIDATOR_VERSION}")
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 
 # Shader files
 set(SHADERS
@@ -71,22 +62,24 @@ add_executable(VulkanApplication
                queues.cpp
                devices.cpp
                graphics_pipeline.cpp
+               memory.cpp
 )
 
-# Make VulkanTriangle dependent on ShadersTarget
+# Make VulkanApplication dependent on ShadersTarget
 add_dependencies(VulkanApplication ShadersTarget)
 
 # Include GLFW and Vulkan directories
 ExternalProject_Get_Property(glfw source_dir binary_dir)
-target_include_directories(VulkanApplication PRIVATE ${source_dir}/include)
-target_include_directories(VulkanApplication PRIVATE ${Vulkan_INCLUDE_DIRS})
+target_include_directories(VulkanApplication PRIVATE ${source_dir}/include ${Vulkan_INCLUDE_DIRS})
 
-# Include shaders directory
-target_include_directories(VulkanApplication PRIVATE ${CMAKE_SOURCE_DIR}/shaders)
-
-# Link the GLFW and Vulkan libraries and add the necessary linker flags
+# Link the GLFW, Vulkan, and VMA libraries and add the necessary linker flags
 add_dependencies(VulkanApplication glfw)
-target_link_libraries(VulkanApplication PRIVATE ${binary_dir}/src/libglfw3.a Vulkan::Vulkan dl pthread X11 Xxf86vm Xrandr Xi)
+target_link_libraries(VulkanApplication PRIVATE 
+    ${binary_dir}/src/libglfw3.a 
+    Vulkan::Vulkan 
+    GPUOpen::VulkanMemoryAllocator 
+    dl pthread X11 Xxf86vm Xrandr Xi
+)
 
 # Set the output directory for the executable
 set_target_properties(VulkanApplication PROPERTIES
@@ -97,9 +90,6 @@ set_target_properties(VulkanApplication PROPERTIES
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native -fPIE")
 
 # Set debug-specific compiler flags
-#set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Werror -Wpedantic -g")
-
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wpedantic -g")
 # Set release-specific compiler flags
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Werror -Wpedantic -O2")
-

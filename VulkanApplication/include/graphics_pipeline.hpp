@@ -20,6 +20,10 @@
 #include <vector>
 #include <string>
 #include <array>
+#include <memory>
+
+#include "memory.hpp"
+#include <vk_mem_alloc.h>
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 // ================================================================================
@@ -81,7 +85,9 @@ public:
                      VkPhysicalDevice physicalDevice,
                      VkQueue graphicsQue,
                      const std::vector<Vertex>& vertices,
-                     const std::vector<uint16_t>& indices);
+                     const std::vector<uint16_t>& indices,
+                     VkInstance& instance,
+                     AllocatorManager& allocatorManager);
 // --------------------------------------------------------------------------------
 
     /**
@@ -232,6 +238,14 @@ public:
     void createVertexBuffer();
 // --------------------------------------------------------------------------------
 
+    /**
+    * @brief Creates an index buffer and allocates memory for it.
+    *
+    * This method creates a Vulkan buffer to hold index data and allocates the necessary
+    * memory for the buffer. The index data is then copied into the buffer.
+    *
+    * @throws std::runtime_error if the buffer or memory allocation fails.
+    */
     void createIndexBuffer();
 // ================================================================================ 
 private:
@@ -246,14 +260,22 @@ private:
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
+
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferMemory;
+
+
     VkPhysicalDevice physicalDevice;  // Physical device
     VkQueue graphicsQueue;
     std::vector<Vertex> vertices;  // Vertex data
     std::vector<uint16_t> indices;
+    VkInstance instance;
+
+    AllocatorManager& allocatorManager;
+    VmaAllocation vertexBufferAllocation;
+    VmaAllocation indexBufferAllocation;
 // --------------------------------------------------------------------------------
 
     /**
@@ -297,28 +319,6 @@ private:
 // --------------------------------------------------------------------------------
 
     /**
-    * @brief Creates a vertex buffer and allocates memory for it.
-    *
-    * This method creates a Vulkan buffer to hold vertex data and allocates the necessary
-    * memory for the buffer. The vertex data is then copied into the buffer.
-    *
-    * @throws std::runtime_error if the buffer or memory allocation fails.
-    */
-//    void createVertexBuffer();
-// --------------------------------------------------------------------------------
-
-    /**
-    * @brief Cleans up the vertex buffer and its associated memory.
-    *
-    * This method destroys the vertex buffer and frees the allocated memory.
-    */
-    void cleanupVertexBuffer();
-// --------------------------------------------------------------------------------
-
-    void cleanupIndexBuffer();
-// --------------------------------------------------------------------------------
-
-    /**
     * @brief Finds a suitable memory type for a Vulkan buffer.
     *
     * This method finds a suitable memory type for a Vulkan buffer based on the provided
@@ -331,14 +331,6 @@ private:
     * @throws std::runtime_error if no suitable memory type is found.
     */
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-// --------------------------------------------------------------------------------
-
-    void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, 
-                      VkMemoryPropertyFlags properties, VkBuffer& buffer, 
-                      VkDeviceMemory& bufferMemory);
-// --------------------------------------------------------------------------------
-
-    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 };
 // ================================================================================
 // ================================================================================

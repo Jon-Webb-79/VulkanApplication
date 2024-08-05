@@ -18,6 +18,7 @@
 #define GLFW_INCLUDE_VULKAN  // <vulkan/vulkan.h>
 #include "window.hpp"
 #include "validation_layers.hpp"
+#include "memory.hpp"
 #include "graphics_pipeline.hpp"
 #include "devices.hpp"
 
@@ -120,6 +121,7 @@ private:
     VkQueue graphicsQueue; // = VK_NULL_HANDLE;
     VkQueue presentQueue; // = VK_NULL_HANDLE;
 
+    std::unique_ptr<AllocatorManager> allocatorManager;
     uint32_t currentFrame = 0;
 // --------------------------------------------------------------------------------
 
