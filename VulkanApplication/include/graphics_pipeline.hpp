@@ -62,6 +62,11 @@ struct Vertex {
 // ================================================================================
 // ================================================================================
 
+struct UniformBufferObject {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+};
 // ================================================================================
 // ================================================================================
 
@@ -262,6 +267,15 @@ public:
 // --------------------------------------------------------------------------------
 
     VkCommandPool getCommandPool() const;
+// --------------------------------------------------------------------------------
+
+    VkExtent2D getSwapChainExtent() const;
+// --------------------------------------------------------------------------------
+
+    const std::vector<void*>& getUniformBuffersMapped() const;
+// --------------------------------------------------------------------------------
+
+    void createUniformBuffers();
 // ================================================================================ 
 private:
     VkDevice device;
@@ -291,6 +305,12 @@ private:
     AllocatorManager& allocatorManager;
     VmaAllocation vertexBufferAllocation;
     VmaAllocation indexBufferAllocation;
+
+    VkDescriptorSetLayout descriptorSetLayout;
+    std::vector<VmaAllocation> uniformBuffersMemory;
+    std::vector<VkBuffer> uniformBuffers;
+ //   std::vector<VkDeviceMemory> uniformBuffersMemory;
+    std::vector<void*> uniformBuffersMapped;
 // --------------------------------------------------------------------------------
 
     /**
@@ -346,6 +366,9 @@ private:
     * @throws std::runtime_error if no suitable memory type is found.
     */
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+// --------------------------------------------------------------------------------
+
+    void createDescriptorSetLayout();
 };
 // ================================================================================
 // ================================================================================

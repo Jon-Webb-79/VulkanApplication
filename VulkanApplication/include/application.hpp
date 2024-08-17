@@ -169,6 +169,9 @@ private:
      * @param height The new height of the window
      */
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
+// --------------------------------------------------------------------------------
+
+    void updateUniformBuffer(uint32_t currentImage);
 };
 // ================================================================================
 // ================================================================================

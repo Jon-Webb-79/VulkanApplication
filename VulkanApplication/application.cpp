@@ -16,6 +16,9 @@
 
 #include <vector>
 #include <iostream>
+#include <glm/glm.hpp>            // Core GLM functionality
+#include <glm/gtc/matrix_transform.hpp>  // For glm::rotate, glm::lookAt, glm::perspective
+#include <chrono>
 // ================================================================================
 // ================================================================================
 
@@ -156,6 +159,7 @@ VulkanApplication::VulkanApplication(std::unique_ptr<Window> window,
     graphicsPipeline->createIndexBuffer();
     graphicsPipeline->createCommandBuffers();
     graphicsPipeline->createSyncObjects();
+    graphicsPipeline->createUniformBuffers(); 
     graphicsQueue = this->vulkanLogicalDevice->getGraphicsQueue();
     presentQueue = this->vulkanLogicalDevice->getPresentQueue();
 }
@@ -218,6 +222,9 @@ void VulkanApplication::drawFrame() {
         throw std::runtime_error("failed to acquire swap chain image!");
     }
 
+    // Update the uniform buffer with the current image/frame
+    updateUniformBuffer(frameIndex);
+
     VkCommandBuffer cmdBuffer = graphicsPipeline->getCommandBuffer(frameIndex);
     vkResetCommandBuffer(cmdBuffer, 0);
     graphicsPipeline->recordCommandBuffer(frameIndex, imageIndex);
@@ -262,6 +269,74 @@ void VulkanApplication::drawFrame() {
 
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
+
+
+// void VulkanApplication::drawFrame() {
+//     VkDevice device = vulkanLogicalDevice->getDevice();
+//     uint32_t frameIndex = currentFrame;
+//
+//     // Wait for the frame to be finished
+//     graphicsPipeline->waitForFences(frameIndex);
+//     graphicsPipeline->resetFences(frameIndex);
+//
+//     uint32_t imageIndex;
+//     VkResult result = vkAcquireNextImageKHR(device, swapChain->getSwapChain(), UINT64_MAX, 
+//                                             graphicsPipeline->getImageAvailableSemaphore(frameIndex), 
+//                                             VK_NULL_HANDLE, &imageIndex);
+//
+//     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+//         recreateSwapChain(); // Recreate swap chain if it's out of date
+//         return;
+//     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+//         throw std::runtime_error("failed to acquire swap chain image!");
+//     }
+//
+//
+//
+//     VkCommandBuffer cmdBuffer = graphicsPipeline->getCommandBuffer(frameIndex);
+//     vkResetCommandBuffer(cmdBuffer, 0);
+//     graphicsPipeline->recordCommandBuffer(frameIndex, imageIndex);
+//
+//     VkSubmitInfo submitInfo{};
+//     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+//
+//     VkSemaphore waitSemaphores[] = {graphicsPipeline->getImageAvailableSemaphore(frameIndex)};
+//     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+//     submitInfo.waitSemaphoreCount = 1;
+//     submitInfo.pWaitSemaphores = waitSemaphores;
+//     submitInfo.pWaitDstStageMask = waitStages;
+//
+//     submitInfo.commandBufferCount = 1;
+//     submitInfo.pCommandBuffers = &cmdBuffer;
+//
+//     VkSemaphore signalSemaphores[] = {graphicsPipeline->getRenderFinishedSemaphore(frameIndex)};
+//     submitInfo.signalSemaphoreCount = 1;
+//     submitInfo.pSignalSemaphores = signalSemaphores;
+//
+//     if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, graphicsPipeline->getInFlightFence(frameIndex)) != VK_SUCCESS) {
+//         throw std::runtime_error("failed to submit draw command buffer!");
+//     }
+//
+//     VkPresentInfoKHR presentInfo{};
+//     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+//     presentInfo.waitSemaphoreCount = 1;
+//     presentInfo.pWaitSemaphores = signalSemaphores;
+//
+//     VkSwapchainKHR swapChains[] = {swapChain->getSwapChain()};
+//     presentInfo.swapchainCount = 1;
+//     presentInfo.pSwapchains = swapChains;
+//     presentInfo.pImageIndices = &imageIndex;
+//
+//     result = vkQueuePresentKHR(presentQueue, &presentInfo);
+//     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+//         framebufferResized = false;
+//         recreateSwapChain();  // Recreate swap chain if it's out of date or suboptimal
+//     } else if (result != VK_SUCCESS) {
+//         throw std::runtime_error("failed to present swap chain image!");
+//     }
+//
+//     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+// }
 // --------------------------------------------------------------------------------
 
 void VulkanApplication::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
@@ -305,6 +380,23 @@ void VulkanApplication::recreateSwapChain() {
 
     // Recreate the command buffers
     graphicsPipeline->createCommandBuffers();
+}
+// --------------------------------------------------------------------------------
+
+void VulkanApplication::updateUniformBuffer(uint32_t currentImage) {
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+    UniformBufferObject ubo{};
+    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.proj = glm::perspective(glm::radians(45.0f), swapChain->getSwapChainExtent().width / (float) swapChain->getSwapChainExtent().height, 0.1f, 10.0f);
+    ubo.proj[1][1] *= -1;  // Fix Y-axis flip in Vulkan
+
+    // Copy the data to the mapped memory for the current frame
+    memcpy(graphicsPipeline->getUniformBuffersMapped()[currentImage], &ubo, sizeof(ubo));
 }
 // ================================================================================
 // ================================================================================

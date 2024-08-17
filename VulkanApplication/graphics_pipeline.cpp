@@ -46,40 +46,41 @@ GraphicsPipeline::GraphicsPipeline(VkDevice device,
 
     // Instantiate allocator with a large block of memory
     createRenderPass(swapChainImageFormat);
+    createDescriptorSetLayout();
     createGraphicsPipeline();
 }
 // --------------------------------------------------------------------------------
 
 GraphicsPipeline::~GraphicsPipeline() {
-    // Wait for the device to be idle before destroying the command pool
+    // Wait for the device to be idle before destroying resources
     vkDeviceWaitIdle(device);
 
+    // Destroy sync objects
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
         vkDestroyFence(device, inFlightFences[i], nullptr);
+
+        // Unmap and destroy uniform buffers using VMA
+        vmaUnmapMemory(allocatorManager.getAllocator(), uniformBuffersMemory[i]); // Unmap the memory
+        allocatorManager.destroyBuffer(uniformBuffers[i], uniformBuffersMemory[i]);
     }
 
-    for (auto framebuffer : framebuffers) {
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
-    }
+    // Clean up descriptor set layout
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
-    if (graphicsPipeline != VK_NULL_HANDLE) {
-        vkDestroyPipeline(device, graphicsPipeline, nullptr);
-    }
-    if (pipelineLayout != VK_NULL_HANDLE) {
-        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-    }
-    if (renderPass != VK_NULL_HANDLE) {
-        vkDestroyRenderPass(device, renderPass, nullptr);
-    }
+    // Clean up framebuffers
+    destroyFramebuffers();
 
-    // Destroy the command pool after the device is idle
-    if (commandPool != VK_NULL_HANDLE) {
-        vkDestroyCommandPool(device, commandPool, nullptr);
-    }
+    // Clean up pipeline-related resources
+    vkDestroyPipeline(device, graphicsPipeline, nullptr);
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyRenderPass(device, renderPass, nullptr);
 
-    // Properly destroy buffers using AllocatorManager
+    // Clean up command pool
+    vkDestroyCommandPool(device, commandPool, nullptr);
+
+    // Clean up vertex and index buffers using VMA
     allocatorManager.destroyBuffer(vertexBuffer, vertexBufferAllocation);
     allocatorManager.destroyBuffer(indexBuffer, indexBufferAllocation);
 }
@@ -519,6 +520,47 @@ void GraphicsPipeline::destroyFramebuffers() {
 
 VkCommandPool GraphicsPipeline::getCommandPool() const {
     return commandPool;
+}
+// --------------------------------------------------------------------------------
+
+void GraphicsPipeline::createDescriptorSetLayout() {
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.pImmutableSamplers = nullptr;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+
+    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+}
+// --------------------------------------------------------------------------------
+
+void GraphicsPipeline::createUniformBuffers() {
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+    uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+    uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        allocatorManager.createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+            VMA_MEMORY_USAGE_CPU_TO_GPU,  // VmaMemoryUsage enum instead of VkMemoryPropertyFlags
+            uniformBuffers[i], uniformBuffersMemory[i]);
+
+        vmaMapMemory(allocatorManager.getAllocator(), uniformBuffersMemory[i], &uniformBuffersMapped[i]);
+    }
+}
+// --------------------------------------------------------------------------------
+
+const std::vector<void*>& GraphicsPipeline::getUniformBuffersMapped() const {
+    return uniformBuffersMapped;
 }
 // ================================================================================
 // ================================================================================
