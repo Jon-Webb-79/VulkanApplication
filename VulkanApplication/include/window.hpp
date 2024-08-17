@@ -118,6 +118,9 @@ public:
      * @brief Abstract method to retrieve the width of a screen in pixels.
      */
     virtual uint32_t getWidth() = 0;
+// --------------------------------------------------------------------------------
+
+    virtual GLFWwindow* getGLFWWindow() const = 0;
 };
 // ================================================================================
 // ================================================================================
@@ -215,6 +218,12 @@ public:
      * @brief Returns the height of a screen in units of pixels
      */
     uint32_t getHeight() override;
+// --------------------------------------------------------------------------------
+
+    void setFramebufferResizeCallback(void (*callback)(GLFWwindow*, int, int));
+// --------------------------------------------------------------------------------
+
+    GLFWwindow* getGLFWWindow() const override;
 // ================================================================================
 private:
 

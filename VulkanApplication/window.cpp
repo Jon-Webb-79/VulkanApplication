@@ -95,6 +95,16 @@ uint32_t GlfwWindow::getWidth() {
 uint32_t GlfwWindow::getHeight() {
     return height;
 }
+// --------------------------------------------------------------------------------
+
+void GlfwWindow::setFramebufferResizeCallback(void (*callback)(GLFWwindow*, int, int)) {
+    glfwSetFramebufferSizeCallback(window, callback);
+}
+// --------------------------------------------------------------------------------
+
+GLFWwindow* GlfwWindow::getGLFWWindow() const {
+    return window;
+}
 // ================================================================================
 // ================================================================================
 // eof

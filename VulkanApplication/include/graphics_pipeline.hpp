@@ -62,6 +62,9 @@ struct Vertex {
 // ================================================================================
 // ================================================================================
 
+// ================================================================================
+// ================================================================================
+
 /**
  * @brief Manages the Vulkan graphics pipeline, including creation, command buffers, synchronization, and cleanup.
  *
@@ -247,6 +250,18 @@ public:
     * @throws std::runtime_error if the buffer or memory allocation fails.
     */
     void createIndexBuffer();
+// --------------------------------------------------------------------------------
+
+    /**
+    * @brief Destroys all framebuffers associated with the pipeline.
+    *
+    * This method will be used to clean up the framebuffers when they are no longer needed,
+    * such as when the swap chain is being recreated.
+    */
+    void destroyFramebuffers();
+// --------------------------------------------------------------------------------
+
+    VkCommandPool getCommandPool() const;
 // ================================================================================ 
 private:
     VkDevice device;

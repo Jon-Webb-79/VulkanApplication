@@ -46,23 +46,23 @@ void generateCircleData(float radius, int segmentCount, std::vector<Vertex>& ver
 // Begin code
 int main(int argc, const char * argv[]) {
     // Define vertices for two connected triangles  
-    // const std::vector<Vertex> vertices = {
-    //     {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    //     {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    //     {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-    //     {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
-    // }; 
-    // const std::vector<uint16_t> indices = {
-    //     0, 1, 2, 2, 3, 0
-    // }; 
+    const std::vector<Vertex> vertices = {
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+    }; 
+    const std::vector<uint16_t> indices = {
+        0, 1, 2, 2, 3, 0
+    }; 
     // Generate vertices for a circle
-    const float radius = 0.5f; // Radius of the circle
-    const int segmentCount = 36; // Number of segments to approximate the circle
-
-    std::vector<Vertex> vertices;
-    std::vector<uint16_t> indices;
-
-    generateCircleData(radius, segmentCount, vertices, indices);
+    // const float radius = 0.5f; // Radius of the circle
+    // const int segmentCount = 36; // Number of segments to approximate the circle
+    //
+    // std::vector<Vertex> vertices;
+    // std::vector<uint16_t> indices;
+    //
+    // generateCircleData(radius, segmentCount, vertices, indices);
     // Call Application 
     try {
         std::unique_ptr<Window> window = std::make_unique<GlfwWindow>(750, 900, "Vulkan Application", false);

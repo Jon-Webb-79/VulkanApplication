@@ -236,6 +236,24 @@ SwapChainSupportDetails SwapChain::querySwapChainSupport(VkPhysicalDevice device
 
     return details;
 }
+// --------------------------------------------------------------------------------
+
+void SwapChain::cleanupSwapChain() {
+    // Destroy the existing swap chain-related resources
+    for (auto imageView : swapChainImageViews) {
+        vkDestroyImageView(device, imageView, nullptr);
+    }
+
+    vkDestroySwapchainKHR(device, swapChain, nullptr);
+}
+// --------------------------------------------------------------------------------
+
+void SwapChain::recreateSwapChain() {
+    // Logic to recreate the swap chain, similar to what was done during the initial creation
+    createSwapChain();  // Recreate the swap chain with updated parameters (like new window size)
+    createImageViews();  // Recreate the image views for the swap chain images
+}
+
 // ================================================================================
 
 void SwapChain::createSwapChain() {

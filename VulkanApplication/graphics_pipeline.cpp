@@ -51,14 +51,19 @@ GraphicsPipeline::GraphicsPipeline(VkDevice device,
 // --------------------------------------------------------------------------------
 
 GraphicsPipeline::~GraphicsPipeline() {
+    // Wait for the device to be idle before destroying the command pool
+    vkDeviceWaitIdle(device);
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
         vkDestroyFence(device, inFlightFences[i], nullptr);
     }
+
     for (auto framebuffer : framebuffers) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
     }
+
     if (graphicsPipeline != VK_NULL_HANDLE) {
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
     }
@@ -68,6 +73,8 @@ GraphicsPipeline::~GraphicsPipeline() {
     if (renderPass != VK_NULL_HANDLE) {
         vkDestroyRenderPass(device, renderPass, nullptr);
     }
+
+    // Destroy the command pool after the device is idle
     if (commandPool != VK_NULL_HANDLE) {
         vkDestroyCommandPool(device, commandPool, nullptr);
     }
@@ -499,6 +506,19 @@ uint32_t GraphicsPipeline::findMemoryType(uint32_t typeFilter, VkMemoryPropertyF
     }
 
     throw std::runtime_error("failed to find suitable memory type!");
+}
+// --------------------------------------------------------------------------------
+
+void GraphicsPipeline::destroyFramebuffers() {
+    for (auto framebuffer : framebuffers) {
+        vkDestroyFramebuffer(device, framebuffer, nullptr);
+    }
+    framebuffers.clear();
+}
+// --------------------------------------------------------------------------------
+
+VkCommandPool GraphicsPipeline::getCommandPool() const {
+    return commandPool;
 }
 // ================================================================================
 // ================================================================================

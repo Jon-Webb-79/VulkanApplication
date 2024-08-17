@@ -170,6 +170,11 @@ void VulkanApplication::run() {
     while (!windowInstance->windowShouldClose()) {
         windowInstance->pollEvents();
         drawFrame();
+
+        if (framebufferResized) {
+            recreateSwapChain();
+            framebufferResized = false;
+        }
     }
     vkDeviceWaitIdle(vulkanLogicalDevice->getDevice());
 }
@@ -196,14 +201,20 @@ void VulkanApplication::destroyResources() {
 void VulkanApplication::drawFrame() {
     VkDevice device = vulkanLogicalDevice->getDevice();
     uint32_t frameIndex = currentFrame;
-    
+
     // Wait for the frame to be finished
     graphicsPipeline->waitForFences(frameIndex);
     graphicsPipeline->resetFences(frameIndex);
+
     uint32_t imageIndex;
-    if (vkAcquireNextImageKHR(device, swapChain->getSwapChain(), UINT64_MAX, 
-                              graphicsPipeline->getImageAvailableSemaphore(frameIndex), 
-                              VK_NULL_HANDLE, &imageIndex) != VK_SUCCESS) {
+    VkResult result = vkAcquireNextImageKHR(device, swapChain->getSwapChain(), UINT64_MAX, 
+                                            graphicsPipeline->getImageAvailableSemaphore(frameIndex), 
+                                            VK_NULL_HANDLE, &imageIndex);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        recreateSwapChain(); // Recreate swap chain if it's out of date
+        return;
+    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error("failed to acquire swap chain image!");
     }
 
@@ -241,10 +252,59 @@ void VulkanApplication::drawFrame() {
     presentInfo.pSwapchains = swapChains;
     presentInfo.pImageIndices = &imageIndex;
 
-    if (vkQueuePresentKHR(presentQueue, &presentInfo) != VK_SUCCESS) {
+    result = vkQueuePresentKHR(presentQueue, &presentInfo);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+        framebufferResized = false;
+        recreateSwapChain();  // Recreate swap chain if it's out of date or suboptimal
+    } else if (result != VK_SUCCESS) {
         throw std::runtime_error("failed to present swap chain image!");
     }
+
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+// --------------------------------------------------------------------------------
+
+void VulkanApplication::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+    auto app = reinterpret_cast<VulkanApplication*>(glfwGetWindowUserPointer(window));
+    if (app) {
+        app->setFramebufferResized(true);
+    }
+}
+// --------------------------------------------------------------------------------
+
+void VulkanApplication::recreateSwapChain() {
+    // If the window is minimized, pause execution until the window is resized again
+    int width = 0, height = 0;
+    GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(windowInstance->getGLFWWindow());
+    glfwGetFramebufferSize(glfwWindow, &width, &height);
+
+    while (width == 0 || height == 0) {
+        glfwGetFramebufferSize(glfwWindow, &width, &height);
+        glfwWaitEvents();
+    }
+
+    // Wait for the device to be idle before starting swap chain recreation
+    vkDeviceWaitIdle(vulkanLogicalDevice->getDevice());
+
+    // Clean up the old swap chain-related resources
+    graphicsPipeline->destroyFramebuffers();  // Destroy the old framebuffers
+    swapChain->cleanupSwapChain();            // Clean up the old swap chain (destroy image views, etc.)
+
+    // Recreate the swap chain and dependent resources
+    swapChain->recreateSwapChain();           // Create a new swap chain and its image views
+
+    // Recreate the framebuffers using the new swap chain image views
+    graphicsPipeline->createFramebuffers(swapChain->getSwapChainImageViews(), swapChain->getSwapChainExtent());
+
+    // Free and recreate command buffers frame by frame
+    VkCommandPool commandPool = graphicsPipeline->getCommandPool();
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkCommandBuffer cmdBuffer = graphicsPipeline->getCommandBuffer(i);
+        vkFreeCommandBuffers(vulkanLogicalDevice->getDevice(), commandPool, 1, &cmdBuffer); // Free single command buffer
+    }
+
+    // Recreate the command buffers
+    graphicsPipeline->createCommandBuffers();
 }
 // ================================================================================
 // ================================================================================

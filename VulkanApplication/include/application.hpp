@@ -105,6 +105,9 @@ public:
      * and rendering frames until the window is closed
      */
     void run();
+// --------------------------------------------------------------------------------
+
+    void setFramebufferResized(bool resized) { framebufferResized = resized; }
 // ================================================================================
 private:
 
@@ -123,6 +126,7 @@ private:
 
     std::unique_ptr<AllocatorManager> allocatorManager;
     uint32_t currentFrame = 0;
+    bool framebufferResized = false; 
 // --------------------------------------------------------------------------------
 
     /**
@@ -145,6 +149,26 @@ private:
     * @throws std::runtime_error if any Vulkan function fails.
     */
     void drawFrame();
+// --------------------------------------------------------------------------------
+
+    /**
+     * @brief Recreates the swap chain and all dependent resources
+     * 
+     * This method will be called if the window is resized and the swap chain needs to be recreated.
+     */
+    void recreateSwapChain();
+// --------------------------------------------------------------------------------
+
+    /**
+     * @brief GLFW framebuffer resize callback
+     * 
+     * This static method is used by GLFW to notify when the framebuffer size changes.
+     * 
+     * @param window The GLFW window pointer
+     * @param width The new width of the window
+     * @param height The new height of the window
+     */
+    static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 };
 // ================================================================================
 // ================================================================================

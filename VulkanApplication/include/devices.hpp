@@ -167,6 +167,13 @@ public:
      * @return The swap chain support details (SwapChainSupportDetails).
      */
     static SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
+// --------------------------------------------------------------------------------
+
+
+    void cleanupSwapChain();
+// --------------------------------------------------------------------------------
+
+    void recreateSwapChain();
 // ================================================================================
 private:
     VkDevice device;
