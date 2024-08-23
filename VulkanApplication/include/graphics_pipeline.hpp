@@ -276,6 +276,12 @@ public:
 // --------------------------------------------------------------------------------
 
     void createUniformBuffers();
+// --------------------------------------------------------------------------------
+
+    void createDescriptorPool();
+// --------------------------------------------------------------------------------
+
+    void createDescriptorSets();
 // ================================================================================ 
 private:
     VkDevice device;
@@ -309,8 +315,9 @@ private:
     VkDescriptorSetLayout descriptorSetLayout;
     std::vector<VmaAllocation> uniformBuffersMemory;
     std::vector<VkBuffer> uniformBuffers;
- //   std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void*> uniformBuffersMapped;
+    VkDescriptorPool descriptorPool;
+    std::vector<VkDescriptorSet> descriptorSets;
 // --------------------------------------------------------------------------------
 
     /**
