@@ -172,7 +172,7 @@ void VulkanLogicalDevice::createLogicalDevice() {
 SwapChain::SwapChain(VkDevice device, 
                      VkSurfaceKHR surface, 
                      VkPhysicalDevice physicalDevice, 
-                     Window* window)
+                     GlfwWindow* window)
     : device(device), 
       surface(surface), 
       physicalDevice(physicalDevice),

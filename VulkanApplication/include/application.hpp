@@ -37,7 +37,7 @@ public:
      *
      * @param window A reference to a Window object
      */
-    VulkanInstance(Window& window, ValidationLayers& validationLayers);
+    VulkanInstance(GlfwWindow& window, ValidationLayers& validationLayers);
 // --------------------------------------------------------------------------------
 
     /**
@@ -58,7 +58,7 @@ public:
     VkSurfaceKHR getSurface() const;
 // ================================================================================
 private:
-    Window& windowInstance;
+    GlfwWindow& windowInstance;
     ValidationLayers& validationLayers;
     VkInstance instance = VK_NULL_HANDLE;
     VkSurfaceKHR surface;
@@ -87,7 +87,7 @@ public:
      * @param window A reference to a Window object that the application will use.
      * @param vertices A vector of Vertex objects
      */
-    VulkanApplication(std::unique_ptr<Window> window, 
+    VulkanApplication(std::unique_ptr<GlfwWindow> window, 
                       const std::vector<Vertex>& vertices,
                       const std::vector<uint16_t>& indices);
 // --------------------------------------------------------------------------------
@@ -111,7 +111,7 @@ public:
 // ================================================================================
 private:
 
-    std::unique_ptr<Window> windowInstance;
+    std::unique_ptr<GlfwWindow> windowInstance;
     std::unique_ptr<ValidationLayers> validationLayers;
     std::unique_ptr<VulkanInstance> vulkanInstanceCreator;
     std::unique_ptr<VulkanPhysicalDevice> vulkanPhysicalDevice; 

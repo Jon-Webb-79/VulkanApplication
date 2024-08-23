@@ -108,7 +108,7 @@ public:
      *
      * @throws std::runtime_error if the swap chain or image views cannot be created.
      */
-    SwapChain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice, Window* window);
+    SwapChain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice, GlfwWindow* window);
 // --------------------------------------------------------------------------------
 
     /**
@@ -179,7 +179,7 @@ private:
     VkDevice device;
     VkSurfaceKHR surface;
     VkPhysicalDevice physicalDevice;
-    Window* window;
+    GlfwWindow* window;
 
     VkSwapchainKHR swapChain = VK_NULL_HANDLE;
     VkFormat swapChainImageFormat;

@@ -65,7 +65,7 @@ int main(int argc, const char * argv[]) {
     // generateCircleData(radius, segmentCount, vertices, indices);
     // Call Application 
     try {
-        std::unique_ptr<Window> window = std::make_unique<GlfwWindow>(750, 900, "Vulkan Application", false);
+        std::unique_ptr<GlfwWindow> window = std::make_unique<GlfwWindow>(750, 900, "Vulkan Application", false);
         
         VulkanApplication triangle(std::move(window), vertices, indices);
 

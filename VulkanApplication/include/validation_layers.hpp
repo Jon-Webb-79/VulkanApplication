@@ -64,7 +64,7 @@ public:
     /**
      * @brief Constructs the ValidationLayers object.
      */
-    ValidationLayers(Window& window);
+    ValidationLayers(GlfwWindow& window);
 // --------------------------------------------------------------------------------
 
     /**
@@ -129,7 +129,7 @@ public:
 // ================================================================================ 
 private:
 
-    Window& window;
+    GlfwWindow& window;
 
     /**
      * @brief Callback function for the Vulkan debug messenger.

@@ -24,7 +24,7 @@
 // ================================================================================
 // ================================================================================
 
-VulkanInstance::VulkanInstance(Window& window, ValidationLayers& validationLayers)
+VulkanInstance::VulkanInstance(GlfwWindow& window, ValidationLayers& validationLayers)
     : windowInstance(window), validationLayers(validationLayers) {
 
     createInstance();
@@ -119,7 +119,7 @@ void VulkanInstance::createSurface() {
 // ================================================================================
 
 
-VulkanApplication::VulkanApplication(std::unique_ptr<Window> window, 
+VulkanApplication::VulkanApplication(std::unique_ptr<GlfwWindow> window, 
                                      const std::vector<Vertex>& vertices,
                                      const std::vector<uint16_t>& indices)
     : windowInstance(std::move(window)),
