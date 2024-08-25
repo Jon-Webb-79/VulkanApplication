@@ -13,7 +13,6 @@
 // Include modules here
 
 #include "include/application.hpp"
-#include "include/window.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -65,9 +64,22 @@ int main(int argc, const char * argv[]) {
     // generateCircleData(radius, segmentCount, vertices, indices);
     // Call Application 
     try {
-        std::unique_ptr<GlfwWindow> window = std::make_unique<GlfwWindow>(750, 900, "Vulkan Application", false);
+        if (!glfwInit()) {
+            throw std::runtime_error("GLFW Initialization Failed!\n");
+        }
+
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); 
         
-        VulkanApplication triangle(std::move(window), vertices, indices);
+        GLFWwindow* window = glfwCreateWindow(700, 900, "Vulkan Application", nullptr, nullptr);
+
+        if (!window) {
+            glfwTerminate();
+            throw std::runtime_error("GLFW Instantiation failed!\n");
+        }
+        //std::unique_ptr<GlfwWindow> window = std::make_unique<GlfwWindow>(750, 900, "Vulkan Application", false);
+        
+        VulkanApplication triangle(window, vertices, indices);
 
         triangle.run();
     } catch(const std::exception& e) {

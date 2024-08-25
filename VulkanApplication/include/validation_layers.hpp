@@ -15,11 +15,10 @@
 #ifndef validation_layers_HPP
 #define validation_layers_HPP
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 #include <vector>
 #include <memory>
-#include "window.hpp"
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 // ================================================================================
 // ================================================================================
 
@@ -64,7 +63,7 @@ public:
     /**
      * @brief Constructs the ValidationLayers object.
      */
-    ValidationLayers(GlfwWindow& window);
+    ValidationLayers();
 // --------------------------------------------------------------------------------
 
     /**
@@ -129,7 +128,7 @@ public:
 // ================================================================================ 
 private:
 
-    GlfwWindow& window;
+//    GlfwWindow& window;
 
     /**
      * @brief Callback function for the Vulkan debug messenger.

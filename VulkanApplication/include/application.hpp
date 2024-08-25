@@ -15,8 +15,9 @@
 #ifndef application_HPP
 #define application_HPP
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 #define GLFW_INCLUDE_VULKAN  // <vulkan/vulkan.h>
-#include "window.hpp"
 #include "validation_layers.hpp"
 #include "memory.hpp"
 #include "graphics_pipeline.hpp"
@@ -37,7 +38,7 @@ public:
      *
      * @param window A reference to a Window object
      */
-    VulkanInstance(GlfwWindow& window, ValidationLayers& validationLayers);
+    VulkanInstance(GLFWwindow* window, ValidationLayers& validationLayers);
 // --------------------------------------------------------------------------------
 
     /**
@@ -58,7 +59,7 @@ public:
     VkSurfaceKHR getSurface() const;
 // ================================================================================
 private:
-    GlfwWindow& windowInstance;
+    GLFWwindow* windowInstance;
     ValidationLayers& validationLayers;
     VkInstance instance = VK_NULL_HANDLE;
     VkSurfaceKHR surface;
@@ -87,7 +88,7 @@ public:
      * @param window A reference to a Window object that the application will use.
      * @param vertices A vector of Vertex objects
      */
-    VulkanApplication(std::unique_ptr<GlfwWindow> window, 
+    VulkanApplication(GLFWwindow* window, 
                       const std::vector<Vertex>& vertices,
                       const std::vector<uint16_t>& indices);
 // --------------------------------------------------------------------------------
@@ -111,7 +112,7 @@ public:
 // ================================================================================
 private:
 
-    std::unique_ptr<GlfwWindow> windowInstance;
+    GLFWwindow* windowInstance;
     std::unique_ptr<ValidationLayers> validationLayers;
     std::unique_ptr<VulkanInstance> vulkanInstanceCreator;
     std::unique_ptr<VulkanPhysicalDevice> vulkanPhysicalDevice; 

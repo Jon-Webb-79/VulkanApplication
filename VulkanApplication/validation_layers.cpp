@@ -16,6 +16,8 @@
 #include <stdexcept>
 #include <cstring>
 #include <iostream>
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 // ================================================================================
 // ================================================================================
 
@@ -44,7 +46,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance,
 // ================================================================================
 
 
-ValidationLayers::ValidationLayers(GlfwWindow& window) : window(window) {}
+ValidationLayers::ValidationLayers() {}
 // --------------------------------------------------------------------------------
 
 ValidationLayers::~ValidationLayers() {}
@@ -58,7 +60,7 @@ bool ValidationLayers::isEnabled() const {
 std::vector<const char*> ValidationLayers::getRequiredExtensions() const {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;
-    glfwExtensions = window.getRequiredInstanceExtensions(&glfwExtensionCount);
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
     std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 

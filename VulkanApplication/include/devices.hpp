@@ -14,9 +14,9 @@
 #ifndef devices_HPP
 #define devices_HPP
 
+#include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 #include "queues.hpp"
-#include "window.hpp"
 #include <memory>
 #include <vector>
 // ================================================================================
@@ -108,7 +108,7 @@ public:
      *
      * @throws std::runtime_error if the swap chain or image views cannot be created.
      */
-    SwapChain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice, GlfwWindow* window);
+    SwapChain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice, GLFWwindow* window);
 // --------------------------------------------------------------------------------
 
     /**
@@ -179,7 +179,7 @@ private:
     VkDevice device;
     VkSurfaceKHR surface;
     VkPhysicalDevice physicalDevice;
-    GlfwWindow* window;
+    GLFWwindow* window;
 
     VkSwapchainKHR swapChain = VK_NULL_HANDLE;
     VkFormat swapChainImageFormat;

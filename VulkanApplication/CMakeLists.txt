@@ -62,7 +62,6 @@ add_custom_target(ShadersTarget ALL DEPENDS ${SPIRV_SHADERS})
 # Define the executable
 add_executable(VulkanApplication 
                main.cpp
-               window.cpp
                application.cpp
                validation_layers.cpp
                queues.cpp

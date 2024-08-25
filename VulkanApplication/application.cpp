@@ -18,13 +18,11 @@
 #include <iostream>
 #include <glm/glm.hpp>            // Core GLM functionality
 #include <glm/gtc/matrix_transform.hpp>  // For glm::rotate, glm::lookAt, glm::perspective
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/string_cast.hpp>
 #include <chrono>
 // ================================================================================
 // ================================================================================
 
-VulkanInstance::VulkanInstance(GlfwWindow& window, ValidationLayers& validationLayers)
+VulkanInstance::VulkanInstance(GLFWwindow* window, ValidationLayers& validationLayers)
     : windowInstance(window), validationLayers(validationLayers) {
 
     createInstance();
@@ -72,7 +70,7 @@ void VulkanInstance::createInstance() {
     // Variables used to help find required extensions
     uint32_t extensionCount = 0;
 
-    const char** extensions = windowInstance.getRequiredInstanceExtensions(&extensionCount);
+    const char** extensions = glfwGetRequiredInstanceExtensions(&extensionCount );
 
     std::vector<const char*> extensionVector(extensions, extensions + extensionCount);
    
@@ -112,22 +110,22 @@ void VulkanInstance::createInstance() {
 // --------------------------------------------------------------------------------
 
 void VulkanInstance::createSurface() {
-    if (windowInstance.createWindowSurface(instance, nullptr, &surface) != VK_SUCCESS)
+    if (glfwCreateWindowSurface(instance, windowInstance, nullptr, &surface) != VK_SUCCESS)
         throw std::runtime_error("Failed to create window surface\n");
 }
 // ================================================================================
 // ================================================================================
 
 
-VulkanApplication::VulkanApplication(std::unique_ptr<GlfwWindow> window, 
+VulkanApplication::VulkanApplication(GLFWwindow* window, 
                                      const std::vector<Vertex>& vertices,
                                      const std::vector<uint16_t>& indices)
     : windowInstance(std::move(window)),
       vertices(vertices),
       indices(indices){
     // Instantiate related classes
-    validationLayers = std::make_unique<ValidationLayers>(*this->windowInstance);
-    vulkanInstanceCreator = std::make_unique<VulkanInstance>(*this->windowInstance, 
+    validationLayers = std::make_unique<ValidationLayers>();
+    vulkanInstanceCreator = std::make_unique<VulkanInstance>(this->windowInstance, 
                                                              *validationLayers.get());
     vulkanPhysicalDevice = std::make_unique<VulkanPhysicalDevice>(*this->vulkanInstanceCreator->getInstance(),
                                                                   this->vulkanInstanceCreator->getSurface());
@@ -143,7 +141,7 @@ VulkanApplication::VulkanApplication(std::unique_ptr<GlfwWindow> window,
     swapChain = std::make_unique<SwapChain>(vulkanLogicalDevice->getDevice(),
                                             vulkanInstanceCreator->getSurface(),
                                             vulkanPhysicalDevice->getPhysicalDevice(),
-                                            windowInstance.get());
+                                            this->windowInstance);
     graphicsPipeline = std::make_unique<GraphicsPipeline>(vulkanLogicalDevice->getDevice(), 
                                                           swapChain->getSwapChainExtent(), 
                                                           swapChain->getSwapChainImageFormat(),
@@ -175,8 +173,8 @@ VulkanApplication::~VulkanApplication() {
 // --------------------------------------------------------------------------------
 
 void VulkanApplication::run() {
-    while (!windowInstance->windowShouldClose()) {
-        windowInstance->pollEvents();
+    while (!glfwWindowShouldClose(windowInstance)) {
+        glfwPollEvents();
         drawFrame();
 
         if (framebufferResized) {
@@ -202,7 +200,7 @@ void VulkanApplication::destroyResources() {
     vulkanInstanceCreator.reset();
 
     // Finally, destroy the window
-    windowInstance.reset();
+    // windowInstance.reset();
 }
 // --------------------------------------------------------------------------------
 
@@ -286,7 +284,7 @@ void VulkanApplication::framebufferResizeCallback(GLFWwindow* window, int width,
 void VulkanApplication::recreateSwapChain() {
     // If the window is minimized, pause execution until the window is resized again
     int width = 0, height = 0;
-    GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(windowInstance->getGLFWWindow());
+    GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(windowInstance);
     glfwGetFramebufferSize(glfwWindow, &width, &height);
 
     while (width == 0 || height == 0) {
@@ -332,12 +330,6 @@ void VulkanApplication::updateUniformBuffer(uint32_t currentImage) {
     ubo.proj[1][1] *= -1;
 
     memcpy(graphicsPipeline->getUniformBuffersMapped()[currentImage], &ubo, sizeof(ubo));
-
-    // Debug output to check uniform buffer values
-    //std::cout << "Time: " << time << " seconds" << std::endl;
-   // std::cout << "Model Matrix: " << glm::to_string(ubo.model) << std::endl;
-   // std::cout << "View Matrix: " << glm::to_string(ubo.view) << std::endl;
-   // std::cout << "Projection Matrix: " << glm::to_string(ubo.proj) << std::endl;
 }
 // ================================================================================
 // ================================================================================
