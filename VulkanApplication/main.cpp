@@ -18,29 +18,27 @@
 #include <stdexcept>
 #include <memory>
 
-// Function to generate circle vertices and indices
-void generateCircleData(float radius, int segmentCount, std::vector<Vertex>& vertices, std::vector<uint16_t>& indices) {
-    vertices.clear();
-    indices.clear();
-
-    // Center vertex
-    vertices.push_back({{0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}); // Center vertex with white color
-
-    // Edge vertices
-    for (int i = 0; i < segmentCount; ++i) {
-        float angle = 2.0f * M_PI * i / segmentCount;
-        float x = radius * cos(angle);
-        float y = radius * sin(angle);
-        vertices.push_back({{x, y}, {1.0f, 0.0f, 0.0f}}); // Edge vertices with red color
+GLFWwindow* create_window(uint32_t h, uint32_t w, const std::string& screen_title, bool full_screen) {
+    if (!glfwInit()) {
+        throw std::runtime_error("GLFW Initialization Failed!\n");
     }
 
-    // Indices for triangle fan
-    for (int i = 1; i <= segmentCount; ++i) {
-        indices.push_back(0);
-        indices.push_back(i);
-        indices.push_back((i % segmentCount) + 1);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+
+    GLFWmonitor* monitor = full_screen ? glfwGetPrimaryMonitor() : nullptr;
+
+    GLFWwindow* window = glfwCreateWindow(w, h, screen_title.c_str(), monitor, nullptr);
+
+    if (!window) {
+        glfwTerminate();
+        throw std::runtime_error("GLFW Instantiation failed!\n");
     }
+    return window;
 }
+// ================================================================================
+// ================================================================================ 
+
 
 // Begin code
 int main(int argc, const char * argv[]) {
@@ -54,31 +52,10 @@ int main(int argc, const char * argv[]) {
     const std::vector<uint16_t> indices = {
         0, 1, 2, 2, 3, 0
     }; 
-    // Generate vertices for a circle
-    // const float radius = 0.5f; // Radius of the circle
-    // const int segmentCount = 36; // Number of segments to approximate the circle
-    //
-    // std::vector<Vertex> vertices;
-    // std::vector<uint16_t> indices;
-    //
-    // generateCircleData(radius, segmentCount, vertices, indices);
+    
     // Call Application 
     try {
-        if (!glfwInit()) {
-            throw std::runtime_error("GLFW Initialization Failed!\n");
-        }
-
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); 
-        
-        GLFWwindow* window = glfwCreateWindow(700, 900, "Vulkan Application", nullptr, nullptr);
-
-        if (!window) {
-            glfwTerminate();
-            throw std::runtime_error("GLFW Instantiation failed!\n");
-        }
-        //std::unique_ptr<GlfwWindow> window = std::make_unique<GlfwWindow>(750, 900, "Vulkan Application", false);
-        
+        GLFWwindow* window = create_window(750, 900, "Vulkan Application", false);
         VulkanApplication triangle(window, vertices, indices);
 
         triangle.run();
