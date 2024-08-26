@@ -33,6 +33,7 @@
  */
 class VulkanInstance {
 public:
+
     /**
      * @brief Constructor for the VulkanInstance class 
      *
@@ -82,6 +83,11 @@ private:
 
 class VulkanApplication {
 public:
+    float zoomLevel = 1.0f;
+// --------------------------------------------------------------------------------
+
+    static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+// --------------------------------------------------------------------------------
     /**
      * @brief Constructs a new VulkanApplication instance.
      * 

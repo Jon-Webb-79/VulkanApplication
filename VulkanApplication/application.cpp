@@ -124,6 +124,8 @@ VulkanApplication::VulkanApplication(GLFWwindow* window,
       vertices(vertices),
       indices(indices){
     // Instantiate related classes
+    glfwSetWindowUserPointer(windowInstance, this);
+
     validationLayers = std::make_unique<ValidationLayers>();
     vulkanInstanceCreator = std::make_unique<VulkanInstance>(this->windowInstance, 
                                                              *validationLayers.get());
@@ -172,7 +174,18 @@ VulkanApplication::~VulkanApplication() {
 }
 // --------------------------------------------------------------------------------
 
+void VulkanApplication::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+    VulkanApplication* app = reinterpret_cast<VulkanApplication*>(glfwGetWindowUserPointer(window));
+    if (app) {
+        app->zoomLevel -= yoffset * 0.1f; // Adjust zoom sensitivity
+        app->zoomLevel = glm::clamp(app->zoomLevel, 0.1f, 5.0f); // Clamp zoom level to reasonable limits
+    }
+}
+// --------------------------------------------------------------------------------
+
 void VulkanApplication::run() {
+    glfwSetScrollCallback(windowInstance, scrollCallback);
+
     while (!glfwWindowShouldClose(windowInstance)) {
         glfwPollEvents();
         drawFrame();
@@ -198,9 +211,6 @@ void VulkanApplication::destroyResources() {
     // Destroy other Vulkan resources
     vulkanPhysicalDevice.reset();
     vulkanInstanceCreator.reset();
-
-    // Finally, destroy the window
-    // windowInstance.reset();
 }
 // --------------------------------------------------------------------------------
 
@@ -319,18 +329,34 @@ void VulkanApplication::recreateSwapChain() {
 
 void VulkanApplication::updateUniformBuffer(uint32_t currentImage) {
     static auto startTime = std::chrono::high_resolution_clock::now();
-    //std::cout << " \n";
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
     UniformBufferObject ubo{};
     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.proj = glm::perspective(glm::radians(45.0f), swapChain->getSwapChainExtent().width / (float) swapChain->getSwapChainExtent().height, 0.1f, 10.0f);
-   // std::cout << "Projection Matrix: " << glm::to_string(ubo.proj) << std::endl;
-    ubo.proj[1][1] *= -1;
+    std::cout << zoomLevel << "\n";
+    float fov = glm::radians(45.0f) / zoomLevel; // Adjust FOV with zoom level
+    ubo.proj = glm::perspective(fov, swapChain->getSwapChainExtent().width / (float)swapChain->getSwapChainExtent().height, 0.1f, 10.0f);
+    ubo.proj[1][1] *= -1; // Invert Y-axis for Vulkan
 
     memcpy(graphicsPipeline->getUniformBuffersMapped()[currentImage], &ubo, sizeof(ubo));
 }
+
+// void VulkanApplication::updateUniformBuffer(uint32_t currentImage) {
+//     static auto startTime = std::chrono::high_resolution_clock::now();
+//     //std::cout << " \n";
+//     auto currentTime = std::chrono::high_resolution_clock::now();
+//     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+//     UniformBufferObject ubo{};
+//     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+//     ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+//     ubo.proj = glm::perspective(glm::radians(45.0f), swapChain->getSwapChainExtent().width / (float) swapChain->getSwapChainExtent().height, 0.1f, 10.0f);
+//    // std::cout << "Projection Matrix: " << glm::to_string(ubo.proj) << std::endl;
+//     ubo.proj[1][1] *= -1;
+//
+//     memcpy(graphicsPipeline->getUniformBuffersMapped()[currentImage], &ubo, sizeof(ubo));
+// }
 // ================================================================================
 // ================================================================================
 // eof
