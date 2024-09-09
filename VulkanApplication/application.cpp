@@ -161,7 +161,9 @@ VulkanApplication::VulkanApplication(GLFWwindow* window,
                                                           *bufferManager.get(),
                                                           *descriptorManager.get(),
                                                           indices,
-                                                          vulkanPhysicalDevice->getDevice());
+                                                          vulkanPhysicalDevice->getDevice(),
+                                                          std::string("../../shaders/shader.vert.spv"),
+                                                          std::string("../../shaders/shader.frag.spv"));
     graphicsPipeline->createFrameBuffers(swapChain->getSwapChainImageViews(), 
                                          swapChain->getSwapChainExtent());
     graphicsQueue = this->vulkanLogicalDevice->getGraphicsQueue();

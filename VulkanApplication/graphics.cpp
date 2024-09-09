@@ -587,14 +587,18 @@ GraphicsPipeline::GraphicsPipeline(VkDevice device,
                                    BufferManager& bufferManager,
                                    DescriptorManager& descriptorManager,  // Fixed typo here
                                    const std::vector<uint16_t>& indices,
-                                   VkPhysicalDevice physicalDevice)
+                                   VkPhysicalDevice physicalDevice,
+                                   std::string vertFile,
+                                   std::string fragFile)
     : device(device),
       swapChain(swapChain),
       commandBufferManager(commandBufferManager),
       bufferManager(bufferManager),
       descriptorManager(descriptorManager),  // Correct initialization
       indices(indices),
-      physicalDevice(physicalDevice) {
+      physicalDevice(physicalDevice),
+      vertFile(vertFile),
+      fragFile(fragFile) {
     createRenderPass(swapChain.getSwapChainImageFormat());
     createGraphicsPipeline();
 }
@@ -809,8 +813,9 @@ uint32_t GraphicsPipeline::findMemoryType(uint32_t typeFilter, VkMemoryPropertyF
 // --------------------------------------------------------------------------------
 
 void GraphicsPipeline::createGraphicsPipeline() {
-    auto vertShaderCode = readFile("../../shaders/shader.vert.spv");
-    auto fragShaderCode = readFile("../../shaders/shader.frag.spv");
+
+    auto vertShaderCode = readFile(vertFile);
+    auto fragShaderCode = readFile(fragFile);
 
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);

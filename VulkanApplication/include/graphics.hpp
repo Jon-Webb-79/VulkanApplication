@@ -465,6 +465,8 @@ public:
      * @param descriptorManager Reference to the DescriptorManager, which provides descriptor sets and layouts.
      * @param indices The index data for rendering.
      * @param physicalDevice The Vulkan physical device handle.
+     * @param vertFile The location of the vertice shader file relative to the executable 
+     * @param fragFile The location of the fragmentation shader file relative to the executable
      */
     GraphicsPipeline(VkDevice device,
                      SwapChain& swapChain,
@@ -472,7 +474,9 @@ public:
                      BufferManager& bufferManager,
                      DescriptorManager& descirptorManager,
                      const std::vector<uint16_t>& indices,
-                     VkPhysicalDevice physicalDevice);
+                     VkPhysicalDevice physicalDevice,
+                     std::string vertFile,
+                     std::string fragFile);
  // --------------------------------------------------------------------------------
 
     /**
@@ -562,6 +566,8 @@ private:
     DescriptorManager& descriptorManager;     /**< Reference to the descriptor manager. */
     std::vector<uint16_t> indices;            /**< Index data for rendering. */
     VkPhysicalDevice physicalDevice;          /**< Vulkan physical device handle. */
+    std::string vertFile;                     /**< Vertices Shader File. */ 
+    std::string fragFile;                     /**< Fragmentation Shader File. */
 
     VkPipelineLayout pipelineLayout;          /**< The Vulkan pipeline layout. */
     VkPipeline graphicsPipeline;              /**< The Vulkan graphics pipeline. */
