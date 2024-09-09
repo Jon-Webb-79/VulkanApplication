@@ -48,7 +48,7 @@ VulkanPhysicalDevice::VulkanPhysicalDevice(VkInstance& instance, VkSurfaceKHR su
 }
 // --------------------------------------------------------------------------------
 
-VkPhysicalDevice VulkanPhysicalDevice::getPhysicalDevice() const {
+const VkPhysicalDevice VulkanPhysicalDevice::getDevice() const {
     return physicalDevice;
 }
 // --------------------------------------------------------------------------------

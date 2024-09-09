@@ -131,22 +131,22 @@ VulkanApplication::VulkanApplication(GLFWwindow* window,
                                                              *validationLayers.get());
     vulkanPhysicalDevice = std::make_unique<VulkanPhysicalDevice>(*this->vulkanInstanceCreator->getInstance(),
                                                                   this->vulkanInstanceCreator->getSurface());
-    vulkanLogicalDevice = std::make_unique<VulkanLogicalDevice>(vulkanPhysicalDevice->getPhysicalDevice(),
+    vulkanLogicalDevice = std::make_unique<VulkanLogicalDevice>(vulkanPhysicalDevice->getDevice(),
                                                                 validationLayers->getValidationLayers(),
                                                                 vulkanInstanceCreator->getSurface(),
                                                                 deviceExtensions);
     allocatorManager = std::make_unique<AllocatorManager>(
-        vulkanPhysicalDevice->getPhysicalDevice(),
+        vulkanPhysicalDevice->getDevice(),
         vulkanLogicalDevice->getDevice(),
         *vulkanInstanceCreator->getInstance());
 
     swapChain = std::make_unique<SwapChain>(vulkanLogicalDevice->getDevice(),
                                             vulkanInstanceCreator->getSurface(),
-                                            vulkanPhysicalDevice->getPhysicalDevice(),
+                                            vulkanPhysicalDevice->getDevice(),
                                             this->windowInstance);
     commandBufferManager = std::make_unique<CommandBufferManager>(vulkanLogicalDevice->getDevice(),
                                                                   indices,
-                                                                  vulkanPhysicalDevice->getPhysicalDevice(),
+                                                                  vulkanPhysicalDevice->getDevice(),
                                                                   vulkanInstanceCreator->getSurface());
     bufferManager = std::make_unique<BufferManager>(vertices,
                                                     indices,
@@ -161,7 +161,7 @@ VulkanApplication::VulkanApplication(GLFWwindow* window,
                                                           *bufferManager.get(),
                                                           *descriptorManager.get(),
                                                           indices,
-                                                          vulkanPhysicalDevice->getPhysicalDevice());
+                                                          vulkanPhysicalDevice->getDevice());
     graphicsPipeline->createFrameBuffers(swapChain->getSwapChainImageViews(), 
                                          swapChain->getSwapChainExtent());
     graphicsQueue = this->vulkanLogicalDevice->getGraphicsQueue();

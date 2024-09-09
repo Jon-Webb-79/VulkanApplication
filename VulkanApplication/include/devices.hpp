@@ -47,13 +47,14 @@ public:
      * 
      * @return The Vulkan physical device handle.
      */
-    VkPhysicalDevice getPhysicalDevice() const;
+    const VkPhysicalDevice getDevice() const;
 // ================================================================================
 
 private:
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkInstance& instance;
     VkSurfaceKHR surface;
+
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 // --------------------------------------------------------------------------------
     
     /**
