@@ -66,7 +66,8 @@ add_executable(VulkanApplication
                validation_layers.cpp
                queues.cpp
                devices.cpp
-               graphics_pipeline.cpp
+               graphics.cpp
+               # graphics_pipeline.cpp
                memory.cpp
 )
 

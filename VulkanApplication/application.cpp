@@ -144,26 +144,26 @@ VulkanApplication::VulkanApplication(GLFWwindow* window,
                                             vulkanInstanceCreator->getSurface(),
                                             vulkanPhysicalDevice->getPhysicalDevice(),
                                             this->windowInstance);
-    graphicsPipeline = std::make_unique<GraphicsPipeline>(vulkanLogicalDevice->getDevice(), 
-                                                          swapChain->getSwapChainExtent(), 
-                                                          swapChain->getSwapChainImageFormat(),
-                                                          vulkanPhysicalDevice->getPhysicalDevice(),
-                                                          vulkanLogicalDevice->getGraphicsQueue(),
-                                                          vertices,
-                                                          this->indices,
-                                                          *this->vulkanInstanceCreator->getInstance(),
-                                                          *allocatorManager);
-    graphicsPipeline->createFramebuffers(swapChain->getSwapChainImageViews(), 
-                                         swapChain->getSwapChainExtent()); 
-    graphicsPipeline->createCommandPool(vulkanPhysicalDevice->getPhysicalDevice(), 
-                                        vulkanInstanceCreator->getSurface());
-    graphicsPipeline->createVertexBuffer();
-    graphicsPipeline->createIndexBuffer();
-    graphicsPipeline->createCommandBuffers();
-    graphicsPipeline->createSyncObjects();
-    graphicsPipeline->createUniformBuffers(); 
-    graphicsPipeline->createDescriptorPool();
-    graphicsPipeline->createDescriptorSets();
+    commandBufferManager = std::make_unique<CommandBufferManager>(vulkanLogicalDevice->getDevice(),
+                                                                  indices,
+                                                                  vulkanPhysicalDevice->getPhysicalDevice(),
+                                                                  vulkanInstanceCreator->getSurface());
+    bufferManager = std::make_unique<BufferManager>(vertices,
+                                                    indices,
+                                                    *allocatorManager,
+                                                    *commandBufferManager.get(),
+                                                    vulkanLogicalDevice->getGraphicsQueue());
+    descriptorManager = std::make_unique<DescriptorManager>(vulkanLogicalDevice->getDevice());
+    descriptorManager->createDescriptorSets(bufferManager->getUniformBuffers());
+    graphicsPipeline = std::make_unique<GraphicsPipeline>(vulkanLogicalDevice->getDevice(),
+                                                          *swapChain.get(),
+                                                          *commandBufferManager.get(),
+                                                          *bufferManager.get(),
+                                                          *descriptorManager.get(),
+                                                          indices,
+                                                          vulkanPhysicalDevice->getPhysicalDevice());
+    graphicsPipeline->createFrameBuffers(swapChain->getSwapChainImageViews(), 
+                                         swapChain->getSwapChainExtent());
     graphicsQueue = this->vulkanLogicalDevice->getGraphicsQueue();
     presentQueue = this->vulkanLogicalDevice->getPresentQueue();
 }
@@ -185,7 +185,6 @@ void VulkanApplication::scrollCallback(GLFWwindow* window, double xoffset, doubl
 
 void VulkanApplication::run() {
     glfwSetScrollCallback(windowInstance, scrollCallback);
-
     while (!glfwWindowShouldClose(windowInstance)) {
         glfwPollEvents();
         drawFrame();
@@ -201,6 +200,9 @@ void VulkanApplication::run() {
 
 void VulkanApplication::destroyResources() {
 
+    commandBufferManager.reset();
+    bufferManager.reset();
+    descriptorManager.reset();
     graphicsPipeline.reset();
     allocatorManager.reset();
     swapChain.reset();
@@ -219,12 +221,11 @@ void VulkanApplication::drawFrame() {
     uint32_t frameIndex = currentFrame;
 
     // Wait for the frame to be finished
-    graphicsPipeline->waitForFences(frameIndex);
-    graphicsPipeline->resetFences(frameIndex);
-
+    commandBufferManager->waitForFences(frameIndex);
+    commandBufferManager->resetFences(frameIndex);
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(device, swapChain->getSwapChain(), UINT64_MAX, 
-                                            graphicsPipeline->getImageAvailableSemaphore(frameIndex), 
+                                            commandBufferManager->getImageAvailableSemaphore(frameIndex), 
                                             VK_NULL_HANDLE, &imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -237,14 +238,16 @@ void VulkanApplication::drawFrame() {
     // Update the uniform buffer with the current image/frame
     updateUniformBuffer(frameIndex);
 
-    VkCommandBuffer cmdBuffer = graphicsPipeline->getCommandBuffer(frameIndex);
+    VkCommandBuffer cmdBuffer = commandBufferManager->getCommandBuffer(frameIndex);
+
     vkResetCommandBuffer(cmdBuffer, 0);
+
     graphicsPipeline->recordCommandBuffer(frameIndex, imageIndex);
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore waitSemaphores[] = {graphicsPipeline->getImageAvailableSemaphore(frameIndex)};
+    VkSemaphore waitSemaphores[] = {commandBufferManager->getImageAvailableSemaphore(frameIndex)};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores;
@@ -253,11 +256,11 @@ void VulkanApplication::drawFrame() {
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &cmdBuffer;
 
-    VkSemaphore signalSemaphores[] = {graphicsPipeline->getRenderFinishedSemaphore(frameIndex)};
+    VkSemaphore signalSemaphores[] = {commandBufferManager->getRenderFinishedSemaphore(frameIndex)};
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, graphicsPipeline->getInFlightFence(frameIndex)) != VK_SUCCESS) {
+    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, commandBufferManager->getInFlightFence(frameIndex)) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 
@@ -313,17 +316,17 @@ void VulkanApplication::recreateSwapChain() {
     swapChain->recreateSwapChain();           // Create a new swap chain and its image views
 
     // Recreate the framebuffers using the new swap chain image views
-    graphicsPipeline->createFramebuffers(swapChain->getSwapChainImageViews(), swapChain->getSwapChainExtent());
+    graphicsPipeline->createFrameBuffers(swapChain->getSwapChainImageViews(), swapChain->getSwapChainExtent());
 
     // Free and recreate command buffers frame by frame
-    VkCommandPool commandPool = graphicsPipeline->getCommandPool();
+    VkCommandPool commandPool = commandBufferManager->getCommandPool();
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        VkCommandBuffer cmdBuffer = graphicsPipeline->getCommandBuffer(i);
+        VkCommandBuffer cmdBuffer = commandBufferManager->getCommandBuffer(i);
         vkFreeCommandBuffers(vulkanLogicalDevice->getDevice(), commandPool, 1, &cmdBuffer); // Free single command buffer
     }
 
     // Recreate the command buffers
-    graphicsPipeline->createCommandBuffers();
+    commandBufferManager->createCommandBuffers();
 }
 // --------------------------------------------------------------------------------
 
@@ -335,28 +338,12 @@ void VulkanApplication::updateUniformBuffer(uint32_t currentImage) {
     UniformBufferObject ubo{};
     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    std::cout << zoomLevel << "\n";
     float fov = glm::radians(45.0f) / zoomLevel; // Adjust FOV with zoom level
     ubo.proj = glm::perspective(fov, swapChain->getSwapChainExtent().width / (float)swapChain->getSwapChainExtent().height, 0.1f, 10.0f);
     ubo.proj[1][1] *= -1; // Invert Y-axis for Vulkan
 
-    memcpy(graphicsPipeline->getUniformBuffersMapped()[currentImage], &ubo, sizeof(ubo));
+    memcpy(bufferManager->getUniformBuffersMapped()[currentImage], &ubo, sizeof(ubo));
 }
-
-// void VulkanApplication::updateUniformBuffer(uint32_t currentImage) {
-//     static auto startTime = std::chrono::high_resolution_clock::now();
-//     //std::cout << " \n";
-//     auto currentTime = std::chrono::high_resolution_clock::now();
-//     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-//     UniformBufferObject ubo{};
-//     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-//     ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-//     ubo.proj = glm::perspective(glm::radians(45.0f), swapChain->getSwapChainExtent().width / (float) swapChain->getSwapChainExtent().height, 0.1f, 10.0f);
-//    // std::cout << "Projection Matrix: " << glm::to_string(ubo.proj) << std::endl;
-//     ubo.proj[1][1] *= -1;
-//
-//     memcpy(graphicsPipeline->getUniformBuffersMapped()[currentImage], &ubo, sizeof(ubo));
-// }
 // ================================================================================
 // ================================================================================
 // eof

@@ -20,7 +20,8 @@
 #define GLFW_INCLUDE_VULKAN  // <vulkan/vulkan.h>
 #include "validation_layers.hpp"
 #include "memory.hpp"
-#include "graphics_pipeline.hpp"
+//#include "graphics_pipeline.hpp"
+#include "graphics.hpp"
 #include "devices.hpp"
 
 #include <memory>
@@ -124,6 +125,9 @@ private:
     std::unique_ptr<VulkanPhysicalDevice> vulkanPhysicalDevice; 
     std::unique_ptr<VulkanLogicalDevice> vulkanLogicalDevice;
     std::unique_ptr<SwapChain> swapChain;
+    std::unique_ptr<CommandBufferManager> commandBufferManager;
+    std::unique_ptr<BufferManager> bufferManager;
+    std::unique_ptr<DescriptorManager> descriptorManager;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
 
     std::vector<Vertex> vertices;
