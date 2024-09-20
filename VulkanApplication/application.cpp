@@ -30,36 +30,43 @@ VulkanInstance::VulkanInstance(GLFWwindow* window, ValidationLayers& validationL
 }
 // --------------------------------------------------------------------------------
 
-
 VulkanInstance::~VulkanInstance() {
+    std::lock_guard<std::mutex> lockSurface(surfaceMutex);
+    std::lock_guard<std::mutex> lockInstance(instanceMutex);
+
     if (surface != VK_NULL_HANDLE) {
         vkDestroySurfaceKHR(instance, surface, nullptr);
+        surface = VK_NULL_HANDLE;
     }
 
     if (instance != VK_NULL_HANDLE) {
         validationLayers.cleanup(instance);
         vkDestroyInstance(instance, nullptr);
+        instance = VK_NULL_HANDLE;
     }
 }
 // --------------------------------------------------------------------------------
 
 
 VkInstance* VulkanInstance::getInstance() {
+    std::lock_guard<std::mutex> lock(instanceMutex);
     return &instance;
 }
 // --------------------------------------------------------------------------------
 
-VkSurfaceKHR VulkanInstance::getSurface() const {
+VkSurfaceKHR VulkanInstance::getSurface() {
+    std::lock_guard<std::mutex> lock(surfaceMutex);
     return surface;
 }
 // ================================================================================
 
-
 void VulkanInstance::createInstance() {
+    std::lock_guard<std::mutex> lock(instanceMutex);  // Protect creation of instance
+
     if (validationLayers.isEnabled() && !validationLayers.checkValidationLayerSupport()) {
-        throw std::runtime_error("validation layers requested, but not available!");
+        throw std::runtime_error("Validation layers requested, but not available!");
     }
-    // Populate VkApplicationInfo struct to describe this application
+
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = "VulkanTriangle";
@@ -67,19 +74,16 @@ void VulkanInstance::createInstance() {
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION_1_3;
-    // Variables used to help find required extensions
+
     uint32_t extensionCount = 0;
-
-    const char** extensions = glfwGetRequiredInstanceExtensions(&extensionCount );
-
+    const char** extensions = glfwGetRequiredInstanceExtensions(&extensionCount);
     std::vector<const char*> extensionVector(extensions, extensions + extensionCount);
-   
-    // If validation layers are enabled, add their required extensions
+
     if (validationLayers.isEnabled()) {
         std::vector<const char*> validationLayerExtensions = validationLayers.getRequiredExtensions();
         extensionVector.insert(extensionVector.end(), validationLayerExtensions.begin(), validationLayerExtensions.end());
     }
-    // Implement VkInstanceCreateInfo struct
+
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
@@ -89,7 +93,7 @@ void VulkanInstance::createInstance() {
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
     if (validationLayers.isEnabled()) {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.getValidationLayers().size());
-        createInfo.ppEnabledLayerNames = validationLayers.getValidationLayers().data(); 
+        createInfo.ppEnabledLayerNames = validationLayers.getValidationLayers().data();
         validationLayers.populateDebugMessengerCreateInfo(debugCreateInfo);
         createInfo.pNext = &debugCreateInfo;
     } else {
@@ -98,9 +102,8 @@ void VulkanInstance::createInstance() {
         createInfo.pNext = nullptr;
     }
 
-    // Create the Vulkan instance
     if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to Create Vulkan Instance!");
+        throw std::runtime_error("Failed to create Vulkan instance!");
     }
 
     if (validationLayers.isEnabled()) {
@@ -110,6 +113,7 @@ void VulkanInstance::createInstance() {
 // --------------------------------------------------------------------------------
 
 void VulkanInstance::createSurface() {
+    std::lock_guard<std::mutex> lock(surfaceMutex);
     if (glfwCreateWindowSurface(instance, windowInstance, nullptr, &surface) != VK_SUCCESS)
         throw std::runtime_error("Failed to create window surface\n");
 }

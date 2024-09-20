@@ -19,6 +19,7 @@
 #include "queues.hpp"
 #include <memory>
 #include <vector>
+#include <mutex>
 // ================================================================================
 // ================================================================================ 
 
@@ -43,6 +44,65 @@ public:
 // --------------------------------------------------------------------------------
 
     /**
+     * @brief Move constructor for VulkanPhysicalDevice.
+     * 
+     * This constructor transfers ownership of the resources managed by the given
+     * VulkanPhysicalDevice object (`other`) to the new object being created.
+     * After the move, the source object (`other`) is left in a valid but unspecified
+     * state. This ensures efficient transfer of resources without copying.
+     * 
+     * @param other The VulkanPhysicalDevice object to be moved. After the move, 
+     * `other` will be left in a valid but unspecified state with its resources
+     * transferred to the new object.
+     */
+    VulkanPhysicalDevice(VulkanPhysicalDevice&& other) noexcept;
+// --------------------------------------------------------------------------------
+
+    /**
+     * @brief Move assignment operator for VulkanPhysicalDevice.
+     * 
+     * This operator transfers ownership of the resources from the given
+     * VulkanPhysicalDevice object (`other`) to the current object (`*this`).
+     * It releases any resources currently held by the current object before
+     * taking ownership of the resources from `other`. After the move, the source
+     * object (`other`) is left in a valid but unspecified state.
+     * 
+     * @param other The VulkanPhysicalDevice object to be moved. After the move, 
+     * `other` will be left in a valid but unspecified state with its resources
+     * transferred to the current object.
+     * 
+     * @return A reference to the current VulkanPhysicalDevice object (`*this`).
+     */
+    VulkanPhysicalDevice& operator=(VulkanPhysicalDevice&& other) noexcept;
+// --------------------------------------------------------------------------------
+
+    /**
+     * @brief Deleted copy constructor.
+     * 
+     * This constructor is deleted to prevent accidental copying of the VulkanPhysicalDevice
+     * object. Copying Vulkan resources is usually undesirable because it can lead to
+     * resource management issues such as double-free errors or unintended resource sharing.
+     * 
+     * @param other The VulkanPhysicalDevice object to be copied (deleted operation).
+     */
+    VulkanPhysicalDevice(const VulkanPhysicalDevice&) = delete;
+// --------------------------------------------------------------------------------
+
+    /**
+     * @brief Deleted copy assignment operator.
+     * 
+     * This operator is deleted to prevent accidental copying of the VulkanPhysicalDevice
+     * object. Copying Vulkan resources is usually undesirable because it can lead to
+     * resource management issues such as double-free errors or unintended resource sharing.
+     * 
+     * @param other The VulkanPhysicalDevice object to be copied (deleted operation).
+     * 
+     * @return A reference to the current VulkanPhysicalDevice object (deleted operation).
+     */
+    VulkanPhysicalDevice& operator=(const VulkanPhysicalDevice&) = delete;
+// --------------------------------------------------------------------------------
+
+    /**
      * @brief Retrieves the selected physical device.
      * 
      * @return The Vulkan physical device handle.
@@ -55,6 +115,8 @@ private:
     VkSurfaceKHR surface;
 
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    mutable std::mutex deviceMutex;
+    std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 // --------------------------------------------------------------------------------
     
     /**
@@ -63,7 +125,7 @@ private:
      * @param device The Vulkan physical device to check.
      * @return True if the device is suitable, false otherwise.
      */
-    bool isDeviceSuitable(const VkPhysicalDevice device);
+    bool isDeviceSuitable(const VkPhysicalDevice device) const;
 // --------------------------------------------------------------------------------
     /**
     * @brief Checks if the specified physical device supports all required device extensions.
@@ -77,7 +139,26 @@ private:
     *
     * @throws std::runtime_error if the extension properties cannot be enumerated.
     */
-    bool checkDeviceExtensionSupport(const VkPhysicalDevice& device);
+    bool checkDeviceExtensionSupport(const VkPhysicalDevice& device) const;
+// --------------------------------------------------------------------------------
+
+    /**
+     * @brief Rates the suitability of a given Vulkan physical device for the application.
+     * 
+     * This function assigns a score to a Vulkan physical device based on its properties and 
+     * features, such as GPU type, maximum texture size, and support for specific Vulkan features.
+     * The scoring system prioritizes discrete GPUs over integrated ones, and gives higher scores 
+     * to devices with better performance characteristics. The device with the highest score 
+     * is considered the most suitable for the application.
+     * 
+     * @param device The Vulkan physical device to be evaluated.
+     * 
+     * @return An integer score representing the suitability of the device. Higher scores 
+     * indicate better suitability. If the device lacks critical features required by the 
+     * application (e.g., geometry shaders), the function returns a score of zero, making the 
+     * device ineligible for selection.
+     */
+    int rateDeviceSuitability(const VkPhysicalDevice device);
 };
 // ================================================================================
 // ================================================================================

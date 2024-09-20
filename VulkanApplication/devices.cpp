@@ -23,37 +23,69 @@
 // ================================================================================
 // ================================================================================
 
-VulkanPhysicalDevice::VulkanPhysicalDevice(VkInstance& instance, VkSurfaceKHR surface) 
+VulkanPhysicalDevice::VulkanPhysicalDevice(VkInstance& instance, VkSurfaceKHR surface)
     : instance(instance), surface(surface) {
+
+    std::lock_guard<std::mutex> lock(deviceMutex);  // Lock when setting physicalDevice
+
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
     if (deviceCount == 0) {
-        throw std::runtime_error("failed to find GPUs with Vulkan support!");
+        throw std::runtime_error("Failed to find GPUs with Vulkan support!");
     }
 
     std::vector<VkPhysicalDevice> devices(deviceCount);
     vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+    int bestScore = -1;  // Initialize bestScore to a low value
+
     for (const auto& device : devices) {
-        if (isDeviceSuitable(device)) {
+        int score = rateDeviceSuitability(device);  // Calculate the score of the device
+        if (score > bestScore && isDeviceSuitable(device)) {  // Choose the best device
+            bestScore = score;
             physicalDevice = device;
-            break;
         }
     }
 
     if (physicalDevice == VK_NULL_HANDLE) {
-        throw std::runtime_error("failed to find a suitable GPU!");
+        throw std::runtime_error("Failed to find a suitable GPU!");
     }
 }
 // --------------------------------------------------------------------------------
 
+VulkanPhysicalDevice::VulkanPhysicalDevice(VulkanPhysicalDevice&& other) noexcept
+    : instance(other.instance), surface(other.surface), physicalDevice(other.physicalDevice) {
+    std::lock_guard<std::mutex> lock(other.deviceMutex);  // Lock the source mutex before transferring
+
+    // Transfer ownership of the physical device
+    other.physicalDevice = VK_NULL_HANDLE;  // Reset the source object
+}
+// --------------------------------------------------------------------------------
+
+VulkanPhysicalDevice& VulkanPhysicalDevice::operator=(VulkanPhysicalDevice&& other) noexcept {
+    if (this != &other) {
+        std::lock_guard<std::mutex> lock(deviceMutex);       // Lock this object's mutex
+        std::lock_guard<std::mutex> otherLock(other.deviceMutex);  // Lock the source object's mutex
+
+        instance = other.instance;
+        surface = other.surface;
+        physicalDevice = other.physicalDevice;
+
+        // Reset the source object
+        other.physicalDevice = VK_NULL_HANDLE;
+    }
+    return *this;
+}
+// --------------------------------------------------------------------------------
+
 const VkPhysicalDevice VulkanPhysicalDevice::getDevice() const {
+    std::lock_guard<std::mutex> lock(deviceMutex);
     return physicalDevice;
 }
 // --------------------------------------------------------------------------------
 
-bool VulkanPhysicalDevice::isDeviceSuitable(const VkPhysicalDevice device) {
+bool VulkanPhysicalDevice::isDeviceSuitable(const VkPhysicalDevice device) const {
     QueueFamilyIndices indices = QueueFamily::findQueueFamilies(device, surface);
 
     bool extensionsSupported = checkDeviceExtensionSupport(device);
@@ -68,20 +100,43 @@ bool VulkanPhysicalDevice::isDeviceSuitable(const VkPhysicalDevice device) {
 }
 // --------------------------------------------------------------------------------
 
-bool VulkanPhysicalDevice::checkDeviceExtensionSupport(const VkPhysicalDevice& device) {
+bool VulkanPhysicalDevice::checkDeviceExtensionSupport(const VkPhysicalDevice& device) const {
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
     std::vector<VkExtensionProperties> availableExtensions(extensionCount);
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
-    std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-
+    std::set<std::string> availableExtensionSet;
     for (const auto& extension : availableExtensions) {
-        requiredExtensions.erase(extension.extensionName);
+        availableExtensionSet.insert(extension.extensionName);
     }
 
-    return requiredExtensions.empty(); 
+    for (const char* const& required : deviceExtensions) {  // Use const char* const& to prevent temporary construction
+        if (availableExtensionSet.find(required) == availableExtensionSet.end()) {
+            return false;  // Missing required extension
+        }
+    }
+
+    return true;  // All required extensions are supported
+}
+// ================================================================================
+
+int VulkanPhysicalDevice::rateDeviceSuitability(const VkPhysicalDevice device) {
+    int score = 0;
+
+    VkPhysicalDeviceProperties deviceProperties;
+    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+
+    // Discrete GPUs have a performance advantage
+    if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+        score += 1000;
+    }
+
+    // Maximum possible size of textures affects graphics quality
+    score += deviceProperties.limits.maxImageDimension2D;
+
+    return score;
 }
 // ================================================================================
 // ================================================================================

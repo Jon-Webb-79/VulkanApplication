@@ -25,6 +25,7 @@
 #include "devices.hpp"
 
 #include <memory>
+#include <mutex>
 // ================================================================================
 // ================================================================================
 
@@ -58,13 +59,16 @@ public:
     /**
      * @brief Returns a raw pointer to an instance of surface
      */
-    VkSurfaceKHR getSurface() const;
+    VkSurfaceKHR getSurface();
 // ================================================================================
 private:
     GLFWwindow* windowInstance;
     ValidationLayers& validationLayers;
     VkInstance instance = VK_NULL_HANDLE;
     VkSurfaceKHR surface;
+
+    std::mutex instanceMutex;
+    std::mutex surfaceMutex;
 // --------------------------------------------------------------------------------
 
     /**
