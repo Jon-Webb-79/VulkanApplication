@@ -251,10 +251,31 @@ public:
     static SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
 // --------------------------------------------------------------------------------
 
-
+    /**
+     * @brief Cleans up the resources associated with the current swap chain.
+     *
+     * This function safely destroys the existing swap chain and all associated image views.
+     * It ensures that Vulkan resources are properly released, preventing memory leaks and
+     * other resource conflicts. This method should be called before recreating the swap chain
+     * or when the swap chain is no longer needed, such as during application shutdown.
+     *
+     * @throws std::runtime_error if any Vulkan resource cannot be destroyed properly.
+     */
     void cleanupSwapChain();
 // --------------------------------------------------------------------------------
-
+    /**
+     * @brief Recreates the swap chain and its associated resources.
+     *
+     * This function handles the recreation of the swap chain and related image views, typically
+     * in response to a window resize or other changes in the surface capabilities. It first cleans up
+     * the existing swap chain by calling `cleanupSwapChain()` and then creates a new swap chain
+     * using the updated surface parameters.
+     *
+     * This method is essential for maintaining proper rendering when the window dimensions change
+     * or when the surface is updated. It should be called whenever the swap chain becomes invalid
+     * or the Vulkan logical device is re-initialized.
+     * @throws std::runtime_error if the swap chain or image views cannot be recreated successfully.
+     */
     void recreateSwapChain();
 // ================================================================================
 private:
@@ -322,31 +343,32 @@ private:
 // ================================================================================
 
 /**
- * @class VulkanLogicalDevice
- * @brief Represents a logical device in a Vulkan application.
+ * @brief A class that manages the Vulkan logical device and its associated queues.
  * 
- * This class is responsible for creating and managing a logical device (VkDevice) and its associated
- * graphics queue. It requires a physical device and optionally validation layers.
+ * This class is responsible for creating and managing the Vulkan logical device 
+ * and its associated graphics and presentation queues. It encapsulates device 
+ * creation and provides methods to retrieve the device and queue handles.
  */
 class VulkanLogicalDevice {
 public:
-    
     /**
      * @brief Constructs a VulkanLogicalDevice object.
      * 
-     * This constructor initializes the VulkanLogicalDevice by creating a logical device and its
-     * associated graphics queue.
+     * This constructor initializes the VulkanLogicalDevice by creating a logical device 
+     * and its associated graphics and presentation queues using the specified physical 
+     * device, validation layers, surface, and device extensions.
      * 
-     * @param physicalDevice A reference to the Vulkan physical device.
+     * @param physicalDevice The Vulkan physical device to use for logical device creation.
      * @param validationLayers A vector containing the names of the validation layers to be enabled.
-     * @param surface A VkSurfaceKHR data type
+     * @param surface The surface used to present images to the screen.
+     * @param deviceExtensions A vector of required device extensions.
      */
     VulkanLogicalDevice(VkPhysicalDevice physicalDevice, 
                         const std::vector<const char*>& validationLayers,
                         VkSurfaceKHR surface,
                         const std::vector<const char*>& deviceExtensions);
-// --------------------------------------------------------------------------------
-    
+// -------------------------------------------------------------------------------- 
+
     /**
      * @brief Destroys the VulkanLogicalDevice object.
      * 
@@ -354,9 +376,68 @@ public:
      */
     ~VulkanLogicalDevice();
 // --------------------------------------------------------------------------------
-    
+
     /**
-     * @brief Retrieves the logical device.
+     * @brief Move constructor for VulkanLogicalDevice.
+     * 
+     * This constructor transfers ownership of the resources managed by the given
+     * VulkanLogicalDevice object (`other`) to the new object being created.
+     * After the move, the source object (`other`) is left in a valid but unspecified
+     * state. This ensures efficient transfer of resources without copying.
+     * 
+     * @param other The VulkanLogicalDevice object to be moved. After the move, 
+     * `other` will be left in a valid but unspecified state with its resources
+     * transferred to the new object.
+     */
+    VulkanLogicalDevice(VulkanLogicalDevice&& other) noexcept;
+// --------------------------------------------------------------------------------
+
+    /**
+     * @brief Move assignment operator for VulkanLogicalDevice.
+     * 
+     * This operator transfers ownership of the resources from the given
+     * VulkanLogicalDevice object (`other`) to the current object (`*this`).
+     * It releases any resources currently held by the current object before
+     * taking ownership of the resources from `other`. After the move, the source
+     * object (`other`) is left in a valid but unspecified state.
+     * 
+     * @param other The VulkanLogicalDevice object to be moved. After the move, 
+     * `other` will be left in a valid but unspecified state with its resources
+     * transferred to the current object.
+     * 
+     * @return A reference to the current VulkanLogicalDevice object (`*this`).
+     */
+    VulkanLogicalDevice& operator=(VulkanLogicalDevice&& other) noexcept;
+// --------------------------------------------------------------------------------
+
+    /**
+     * @brief Deleted copy constructor.
+     * 
+     * This constructor is deleted to prevent accidental copying of the VulkanLogicalDevice
+     * object. Copying Vulkan resources is usually undesirable because it can lead to
+     * resource management issues such as double-free errors or unintended resource sharing.
+     * 
+     * @param other The VulkanLogicalDevice object to be copied (deleted operation).
+     */
+    VulkanLogicalDevice(const VulkanLogicalDevice&) = delete;
+// --------------------------------------------------------------------------------
+
+    /**
+     * @brief Deleted copy assignment operator.
+     * 
+     * This operator is deleted to prevent accidental copying of the VulkanLogicalDevice
+     * object. Copying Vulkan resources is usually undesirable because it can lead to
+     * resource management issues such as double-free errors or unintended resource sharing.
+     * 
+     * @param other The VulkanLogicalDevice object to be copied (deleted operation).
+     * 
+     * @return A reference to the current VulkanLogicalDevice object (deleted operation).
+     */
+    VulkanLogicalDevice& operator=(const VulkanLogicalDevice&) = delete;
+// --------------------------------------------------------------------------------
+
+    /**
+     * @brief Retrieves the Vulkan logical device.
      * 
      * @return The Vulkan logical device handle.
      */
@@ -364,7 +445,7 @@ public:
 // --------------------------------------------------------------------------------
 
     /**
-     * @brief Retrieves the graphics queue.
+     * @brief Retrieves the Vulkan graphics queue.
      * 
      * @return The Vulkan graphics queue handle.
      */
@@ -372,24 +453,32 @@ public:
 // --------------------------------------------------------------------------------
 
     /**
-     * @brief Retrives the present queue 
-     *
-     * @return The vulkan queue handle
+     * @brief Retrieves the Vulkan present queue.
+     * 
+     * @return The Vulkan present queue handle.
      */
     VkQueue getPresentQueue() const;
 // ================================================================================
 private:
-    VkDevice device = VK_NULL_HANDLE;
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
-    VkPhysicalDevice physicalDevice;  // Changed to reference
-    const std::vector<const char*>& validationLayers;
-    VkSurfaceKHR surface;
-    const std::vector<const char*>& deviceExtensions; 
-// --------------------------------------------------------------------------------
+    VkDevice device = VK_NULL_HANDLE; ///< Vulkan logical device handle.
+    VkQueue graphicsQueue; ///< Handle to the Vulkan graphics queue.
+    VkQueue presentQueue; ///< Handle to the Vulkan present queue.
+    VkPhysicalDevice physicalDevice; ///< Handle to the Vulkan physical device.
+    std::vector<const char*> validationLayers; ///< Names of the validation layers to be enabled.
+    VkSurfaceKHR surface; ///< Surface used to present images to the screen.
+    std::vector<const char*> deviceExtensions; ///< Names of the device extensions to be enabled.
+
+    mutable std::mutex deviceMutex; ///< Mutex to protect access to the Vulkan logical device.
+    mutable std::mutex queueMutex; ///< Mutex to protect access to the Vulkan queues.
+// -------------------------------------------------------------------------------- 
 
     /**
-     * @brief Creates the logical device and retrieves the graphics queue.
+     * @brief Creates the Vulkan logical device and retrieves the graphics and present queues.
+     * 
+     * This function is called during the construction of the VulkanLogicalDevice object 
+     * to initialize the Vulkan logical device and retrieve the associated queues.
+     * 
+     * @throws std::runtime_error if the logical device or queues cannot be created.
      */
     void createLogicalDevice();
 };

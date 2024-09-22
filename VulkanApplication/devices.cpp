@@ -20,6 +20,7 @@
 #include <set>
 #include <limits>
 #include <algorithm>
+#include <iostream>
 // ================================================================================
 // ================================================================================
 
@@ -141,6 +142,7 @@ int VulkanPhysicalDevice::rateDeviceSuitability(const VkPhysicalDevice device) {
 // ================================================================================
 // ================================================================================
 
+
 VulkanLogicalDevice::VulkanLogicalDevice(VkPhysicalDevice physicalDevice, 
                                          const std::vector<const char*>& validationLayers,
                                          VkSurfaceKHR surface,
@@ -148,39 +150,49 @@ VulkanLogicalDevice::VulkanLogicalDevice(VkPhysicalDevice physicalDevice,
     : physicalDevice(physicalDevice), 
       validationLayers(validationLayers),
       surface(surface),
-      deviceExtensions(deviceExtensions){
+      deviceExtensions(deviceExtensions) {
     createLogicalDevice();
 }
+
 // --------------------------------------------------------------------------------
 
 VulkanLogicalDevice::~VulkanLogicalDevice() {
+    std::lock_guard<std::mutex> lock(deviceMutex); // Protect device destruction
     if (device != VK_NULL_HANDLE) {
         vkDestroyDevice(device, nullptr);
+        device = VK_NULL_HANDLE; // Reset to a known state
     }
 }
+
 // --------------------------------------------------------------------------------
 
 VkDevice VulkanLogicalDevice::getDevice() const {
+    std::lock_guard<std::mutex> lock(deviceMutex);
     return device;
 }
+
 // --------------------------------------------------------------------------------
 
 VkQueue VulkanLogicalDevice::getGraphicsQueue() const {
+    std::lock_guard<std::mutex> lock(queueMutex);
     return graphicsQueue;
 }
+
 // --------------------------------------------------------------------------------
 
 VkQueue VulkanLogicalDevice::getPresentQueue() const {
+    std::lock_guard<std::mutex> lock(queueMutex);
     return presentQueue;
 }
-// ================================================================================
+
+// --------------------------------------------------------------------------------
 
 void VulkanLogicalDevice::createLogicalDevice() {
     QueueFamilyIndices indices = QueueFamily::findQueueFamilies(physicalDevice, surface);
 
     if (!indices.graphicsFamily.has_value() || !indices.presentFamily.has_value()) {
         throw std::runtime_error("Failed to find required queue families.");
-    } 
+    }
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
@@ -203,7 +215,7 @@ void VulkanLogicalDevice::createLogicalDevice() {
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
     createInfo.pEnabledFeatures = &deviceFeatures;
 
-     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
     if (!validationLayers.empty()) {
@@ -213,12 +225,63 @@ void VulkanLogicalDevice::createLogicalDevice() {
         createInfo.enabledLayerCount = 0;
     }
 
-    if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create logical device!");
+    {
+        std::lock_guard<std::mutex> lock(deviceMutex); // Lock while creating the device
+        if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create logical device!");
+        }
     }
 
-    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-    vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+    {
+        std::lock_guard<std::mutex> lock(queueMutex); // Lock while accessing the queues
+        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+        vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+    }
+
+    std::cout << "Logical device and queues created successfully." << std::endl; // For logging
+}
+
+// --------------------------------------------------------------------------------
+
+VulkanLogicalDevice::VulkanLogicalDevice(VulkanLogicalDevice&& other) noexcept
+    : device(VK_NULL_HANDLE), graphicsQueue(VK_NULL_HANDLE), presentQueue(VK_NULL_HANDLE),
+      physicalDevice(other.physicalDevice), validationLayers(std::move(other.validationLayers)),
+      surface(other.surface), deviceExtensions(std::move(other.deviceExtensions)) {
+
+    std::lock_guard<std::mutex> lock(other.deviceMutex); // Lock other object's mutex
+
+    device = other.device;
+    graphicsQueue = other.graphicsQueue;
+    presentQueue = other.presentQueue;
+
+    // Reset the source object
+    other.device = VK_NULL_HANDLE;
+}
+
+// --------------------------------------------------------------------------------
+
+VulkanLogicalDevice& VulkanLogicalDevice::operator=(VulkanLogicalDevice&& other) noexcept {
+    if (this != &other) {
+        std::lock_guard<std::mutex> lockThis(deviceMutex);
+        std::lock_guard<std::mutex> lockOther(other.deviceMutex);
+
+        // Destroy current device if exists
+        if (device != VK_NULL_HANDLE) {
+            vkDestroyDevice(device, nullptr);
+        }
+
+        device = other.device;
+        graphicsQueue = other.graphicsQueue;
+        presentQueue = other.presentQueue;
+        physicalDevice = other.physicalDevice;
+        validationLayers = std::move(other.validationLayers); // Move the vectors
+        deviceExtensions = std::move(other.deviceExtensions);
+        surface = other.surface;
+
+        // Reset the source object
+        other.device = VK_NULL_HANDLE;
+    }
+    return *this;
 }
 // ================================================================================
 // ================================================================================
@@ -437,7 +500,6 @@ VkExtent2D SwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilit
         return actualExtent;
     }
 }
-
 // ================================================================================
 // ================================================================================
 // eof
