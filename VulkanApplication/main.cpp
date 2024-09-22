@@ -13,10 +13,11 @@
 // Include modules here
 
 #include "include/application.hpp"
-
 #include <iostream>
 #include <stdexcept>
 #include <memory>
+// ================================================================================
+// ================================================================================ 
 
 GLFWwindow* create_window(uint32_t h, uint32_t w, const std::string& screen_title, bool full_screen) {
     if (!glfwInit()) {
@@ -59,6 +60,12 @@ int main(int argc, const char * argv[]) {
         VulkanApplication triangle(window, vertices, indices);
 
         triangle.run();
+
+         // Clean up the GLFW window
+        glfwDestroyWindow(window);
+
+        // Terminate GLFW and clean up resources
+        glfwTerminate();
     } catch(const std::exception& e) {
         std::cerr << e.what() <<  "\n";
         return EXIT_FAILURE;

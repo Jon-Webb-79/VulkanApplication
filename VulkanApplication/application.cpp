@@ -31,18 +31,21 @@ VulkanInstance::VulkanInstance(GLFWwindow* window, ValidationLayers& validationL
 // --------------------------------------------------------------------------------
 
 VulkanInstance::~VulkanInstance() {
-    std::lock_guard<std::mutex> lockSurface(surfaceMutex);
-    std::lock_guard<std::mutex> lockInstance(instanceMutex);
-
-    if (surface != VK_NULL_HANDLE) {
-        vkDestroySurfaceKHR(instance, surface, nullptr);
-        surface = VK_NULL_HANDLE;
+    {
+        std::lock_guard<std::mutex> lockSurface(surfaceMutex);
+        if (surface != VK_NULL_HANDLE) {
+            vkDestroySurfaceKHR(instance, surface, nullptr);
+            surface = VK_NULL_HANDLE;
+        }
     }
 
-    if (instance != VK_NULL_HANDLE) {
-        validationLayers.cleanup(instance);
-        vkDestroyInstance(instance, nullptr);
-        instance = VK_NULL_HANDLE;
+    {
+        std::lock_guard<std::mutex> lockInstance(instanceMutex);
+        if (instance != VK_NULL_HANDLE) {
+            validationLayers.cleanup(instance);
+            vkDestroyInstance(instance, nullptr);
+            instance = VK_NULL_HANDLE;
+        }
     }
 }
 // --------------------------------------------------------------------------------
@@ -219,6 +222,7 @@ void VulkanApplication::destroyResources() {
     // Destroy other Vulkan resources
     vulkanPhysicalDevice.reset();
     vulkanInstanceCreator.reset();
+ //   validationLayers.reset();
 }
 // --------------------------------------------------------------------------------
 

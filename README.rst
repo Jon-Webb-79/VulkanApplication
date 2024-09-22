@@ -1,5 +1,5 @@
+EADME.rst
 
-******************
 Vulkan Application
 ******************
 This application implements an object oriented approach to the 
@@ -72,11 +72,11 @@ In order to download this repository from github, follow these instructions
       # If using zsh 
       zsh debug.zsh
 
-#. Navigate to ``csalt/csalt/build/debug`` to run unit tests 
+#. Navigate to ``csalt/csalt/build/debug`` to run the debug version 
 
    .. code-block:: bash 
 
-      valgrind ./VulkanApplication
+      ./VulkanApplication
       
 #. If all unit tests do not pass with no memory leaks, you may need to contact 
    the administrator of this git repository.  If they do pass, then you are set 
@@ -89,4 +89,5 @@ In order to download this repository from github, follow these instructions
    .. code-block:: bash 
 
       zsh release.zsh
+      ./VulkanApplication
 

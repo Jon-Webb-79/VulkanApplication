@@ -65,7 +65,7 @@ private:
     GLFWwindow* windowInstance;
     ValidationLayers& validationLayers;
     VkInstance instance = VK_NULL_HANDLE;
-    VkSurfaceKHR surface;
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
 
     std::mutex instanceMutex;
     std::mutex surfaceMutex;
