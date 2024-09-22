@@ -1,8 +1,22 @@
+
 ******************
 Vulkan Application
 ******************
-This is a simple application that provides an object oriented implementation
-of the `Vulkan Tutorial <https://vulkan-tutorial.com/>`_ up to the point of indexed indices.
+This application implements an object oriented approach to the 
+`Vulkan Tutorial <https://vulkan-tutorial.com/>`_ up to
+Uniform Buffer Objects.  This application produces a spinning
+square at an angle, and allows the user to resize the window
+and zoom into and out of the screen.
+
+
+.. image:: app.png
+   :alt: Screenshot of the application implementing Uniform Buffer Objects
+   :align: center
+
+This repository is intended to be a starting point for development of 
+applications that do not need to implement further Vulkan Attributes and 
+is still in development.  Future users of this repository are encouraged 
+to add unit testing and mutex's for thread safety.
 
 Contributing
 ############
@@ -68,4 +82,11 @@ In order to download this repository from github, follow these instructions
    the administrator of this git repository.  If they do pass, then you are set 
    to transform this code-base into a static or dynamic library, or just 
    copy the ``.c`` and ``.h`` files to your project.
+
+#. If the debug build works correctly, then the user is encoruaged to create 
+   a release version by the following command within the scripts directory.
+
+   .. code-block:: bash 
+
+      zsh release.zsh
 
